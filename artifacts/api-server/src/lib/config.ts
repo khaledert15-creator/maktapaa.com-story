@@ -2,6 +2,8 @@ import { z } from "@workspace/api-zod";
 
 const positiveInteger = (fallback: number) => z.coerce.number().int().positive().default(fallback);
 const optionalUrl = z.string().url().optional().or(z.literal(""));
+const optionalPositiveInteger = z.preprocess(value => value === "" ? undefined : value, z.coerce.number().int().positive().optional());
+const optionalSecret = (minimum: number) => z.string().min(minimum).optional().or(z.literal(""));
 
 const environmentSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -34,6 +36,17 @@ const environmentSchema = z.object({
   BUILD_VERSION: z.string().max(100).default("development"),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
   SLOW_REQUEST_MS: positiveInteger(1_000),
+  WEBSITE_CHAT_ENABLED: z.enum(["true", "false"]).default("false"),
+  WEBSITE_CHAT_ENCRYPTION_KEY: z.string().optional(),
+  WEBSITE_CHAT_ATTACHMENT_MAX_BYTES: positiveInteger(5 * 1024 * 1024),
+  WEBSITE_CHAT_FALLBACK_POLL_MS: positiveInteger(15_000),
+  CHATWOOT_BASE_URL: optionalUrl,
+  CHATWOOT_REALTIME_URL: optionalUrl,
+  CHATWOOT_API_INBOX_IDENTIFIER: z.string().trim().min(8).max(300).optional().or(z.literal("")),
+  CHATWOOT_HMAC_TOKEN: optionalSecret(16),
+  CHATWOOT_REQUEST_TIMEOUT_MS: positiveInteger(8_000),
+  CHATWOOT_ACCOUNT_ID: optionalPositiveInteger,
+  CHATWOOT_ACCOUNT_ACCESS_TOKEN: optionalSecret(16),
 }).superRefine((value, context) => {
   const production = value.NODE_ENV === "production";
   if (production && value.SESSION_SECRET.length < 32) {
@@ -73,6 +86,28 @@ const environmentSchema = z.object({
     if (!value.EMAIL_FROM) context.addIssue({ code: "custom", path: ["EMAIL_FROM"], message: "is required for Resend" });
     if (!value.RESEND_API_KEY) context.addIssue({ code: "custom", path: ["RESEND_API_KEY"], message: "is required for Resend" });
   }
+  if (value.WEBSITE_CHAT_ENABLED === "true") {
+    if (!value.CHATWOOT_BASE_URL) context.addIssue({ code: "custom", path: ["CHATWOOT_BASE_URL"], message: "is required when website chat is enabled" });
+    if (!value.CHATWOOT_API_INBOX_IDENTIFIER) context.addIssue({ code: "custom", path: ["CHATWOOT_API_INBOX_IDENTIFIER"], message: "is required when website chat is enabled" });
+    if (!value.CHATWOOT_HMAC_TOKEN) context.addIssue({ code: "custom", path: ["CHATWOOT_HMAC_TOKEN"], message: "is required when website chat is enabled" });
+    if (!value.WEBSITE_CHAT_ENCRYPTION_KEY || value.WEBSITE_CHAT_ENCRYPTION_KEY.length < 32) {
+      context.addIssue({ code: "custom", path: ["WEBSITE_CHAT_ENCRYPTION_KEY"], message: "must contain at least 32 characters when website chat is enabled" });
+    }
+    if (value.CHATWOOT_REALTIME_URL) {
+      try {
+        const realtimeUrl = new URL(value.CHATWOOT_REALTIME_URL);
+        if (!["ws:", "wss:"].includes(realtimeUrl.protocol)) context.addIssue({ code: "custom", path: ["CHATWOOT_REALTIME_URL"], message: "must use ws or wss" });
+      } catch {
+        context.addIssue({ code: "custom", path: ["CHATWOOT_REALTIME_URL"], message: "must be a valid WebSocket URL" });
+      }
+    }
+    if (production && value.CHATWOOT_BASE_URL && new URL(value.CHATWOOT_BASE_URL).protocol !== "https:") {
+      context.addIssue({ code: "custom", path: ["CHATWOOT_BASE_URL"], message: "must use HTTPS in production" });
+    }
+    if (production && value.CHATWOOT_REALTIME_URL && new URL(value.CHATWOOT_REALTIME_URL).protocol !== "wss:") {
+      context.addIssue({ code: "custom", path: ["CHATWOOT_REALTIME_URL"], message: "must use WSS in production" });
+    }
+  }
 });
 
 const localDefaults = {
@@ -99,6 +134,7 @@ export const config = {
   allowedOrigins: parsed.data.CORS_ORIGIN.split(",").map(origin => origin.trim()).filter(Boolean),
   allowLocalStorageInProduction: parsed.data.ALLOW_LOCAL_STORAGE_IN_PRODUCTION === "true",
   s3ForcePathStyle: parsed.data.S3_FORCE_PATH_STYLE === "true",
+  websiteChatEnabled: parsed.data.WEBSITE_CHAT_ENABLED === "true",
 };
 
 export type RuntimeConfig = typeof config;

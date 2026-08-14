@@ -3,11 +3,11 @@ import type { Request, Response, NextFunction } from "express";
 type Bucket = { count: number; resetAt: number };
 const buckets = new Map<string, Bucket>();
 
-export function rateLimit(options: { windowMs: number; max: number; namespace: string }) {
+export function rateLimit(options: { windowMs: number; max: number; namespace: string; key?: (req: Request) => string }) {
   return (req: Request, res: Response, next: NextFunction): void => {
     const now = Date.now();
     if (buckets.size > 10_000) for (const [bucketKey, value] of buckets) if (value.resetAt <= now) buckets.delete(bucketKey);
-    const key = `${options.namespace}:${req.ip}`;
+    const key = `${options.namespace}:${options.key?.(req) ?? req.ip}`;
     const current = buckets.get(key);
     const bucket = !current || current.resetAt <= now ? { count: 0, resetAt: now + options.windowMs } : current;
     bucket.count += 1;

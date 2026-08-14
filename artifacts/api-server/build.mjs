@@ -19,6 +19,7 @@ async function buildAll() {
       index: path.resolve(artifactDir, "src/index.ts"),
       migrate: path.resolve(artifactDir, "src/migrate.ts"),
       "bootstrap-admin": path.resolve(artifactDir, "src/scripts/bootstrap-admin.ts"),
+      "provision-chatwoot-inbox": path.resolve(artifactDir, "src/scripts/provision-chatwoot-inbox.ts"),
     },
     platform: "node",
     bundle: true,

@@ -22,6 +22,10 @@ function regenerateSession(req: Parameters<typeof router.post>[1] extends (...ar
   return new Promise((resolve, reject) => req.session.regenerate(error => error ? reject(error) : resolve()));
 }
 
+function saveSession(req: Parameters<typeof router.post>[1] extends (...args: infer A) => unknown ? A[0] : never): Promise<void> {
+  return new Promise((resolve, reject) => req.session.save(error => error ? reject(error) : resolve()));
+}
+
 // Customer register
 router.post("/auth/register", async (req, res): Promise<void> => {
   const input = parseBody(customerRegisterSchema, req.body, res); if (!input) return;
@@ -40,10 +44,13 @@ router.post("/auth/register", async (req, res): Promise<void> => {
 
   
   const existingCart = req.session.cart;
+  const websiteChatGuestId = req.session.websiteChatGuestId;
   await regenerateSession(req);
   if (existingCart) req.session.cart = existingCart;
+  if (websiteChatGuestId) req.session.websiteChatGuestId = websiteChatGuestId;
   req.session.customerId = customer.id;
   req.session.customerName = customer.name;
+  await saveSession(req);
 
   res.status(201).json({ customer: { id: customer.id, name: customer.name, email: customer.email, mobile: customer.primaryPhone, primaryPhone: customer.primaryPhone, primaryPhoneHasWhatsApp: customer.primaryPhoneHasWhatsApp, alternatePhone: customer.alternatePhone, alternatePhoneHasWhatsApp: customer.alternatePhoneHasWhatsApp, preferredWhatsAppPhone: customer.preferredWhatsAppPhone, isBlocked: customer.isBlocked, createdAt: customer.createdAt } });
 });
@@ -74,10 +81,13 @@ router.post("/auth/login", loginRateLimit, async (req, res): Promise<void> => {
 
   
   const existingCart = req.session.cart;
+  const websiteChatGuestId = req.session.websiteChatGuestId;
   await regenerateSession(req);
   if (existingCart) req.session.cart = existingCart;
+  if (websiteChatGuestId) req.session.websiteChatGuestId = websiteChatGuestId;
   req.session.customerId = customer.id;
   req.session.customerName = customer.name;
+  await saveSession(req);
 
   res.json({ customer: { id: customer.id, name: customer.name, email: customer.email, mobile: customer.primaryPhone, primaryPhone: customer.primaryPhone, primaryPhoneHasWhatsApp: customer.primaryPhoneHasWhatsApp, alternatePhone: customer.alternatePhone, alternatePhoneHasWhatsApp: customer.alternatePhoneHasWhatsApp, preferredWhatsAppPhone: customer.preferredWhatsAppPhone, isBlocked: customer.isBlocked, createdAt: customer.createdAt } });
 });
@@ -128,6 +138,7 @@ router.post("/auth/admin/login", loginRateLimit, async (req, res): Promise<void>
   req.session.adminId = user.id;
   req.session.adminRole = user.role;
   req.session.adminPermissions = user.permissions;
+  await saveSession(req);
 
   res.json({ user: { id: user.id, name: user.name, email: user.email, role: user.role, permissions: user.permissions } });
 });

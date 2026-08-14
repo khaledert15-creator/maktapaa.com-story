@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useParams } from "wouter";
-import { BookOpen, Check, Heart, Maximize2, Minus, Plus, Share2, ShieldCheck, ShoppingCart, Truck } from "lucide-react";
+import { BookOpen, Check, Heart, Maximize2, MessageCircle, Minus, Plus, Share2, ShieldCheck, ShoppingCart, Truck } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import { getGetCartQueryKey, getGetFrequentlyBoughtProductsQueryKey, getGetRelatedProductsQueryKey, getListFavoritesQueryKey, useAddFavorite, useAddToCart, useGetFrequentlyBoughtProducts, useGetProduct, useGetRelatedProducts, useGetSiteSettings, useListFavorites, useListGovernorates, useRemoveFavorite, type ProductSummary } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -13,6 +13,7 @@ import { Seo } from "@/components/storefront/Seo";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { type ProductNotice, useProductNotice } from "@/components/storefront/ProductNoticeModal";
+import { useWebsiteChat } from "@/contexts/WebsiteChatContext";
 
 export default function ProductDetail() {
   const { slug } = useParams<{ slug: string }>();
@@ -36,8 +37,14 @@ export default function ProductDetail() {
   const removeFavorite = useRemoveFavorite({ mutation: { onSuccess: refreshFavorites } });
   const addToCart = useAddToCart({ mutation: { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetCartQueryKey() }) } });
   const notice = useProductNotice(product as unknown as ProductNotice | undefined, true);
+  const websiteChat = useWebsiteChat();
 
   useEffect(() => { if (product) setSelectedImage(product.images[0] || product.coverImage || null); }, [product]);
+  useEffect(() => {
+    if (!product) return;
+    websiteChat.setPageContext({ path: `/product/${product.slug}`, type: "product", productId: product.id });
+    return () => websiteChat.setPageContext();
+  }, [product?.id, product?.slug]);
   useEffect(() => {
     if (!product) return;
     const summary: ProductSummary = { id: product.id, nameAr: product.nameAr, nameEn: product.nameEn, slug: product.slug, coverImage: product.coverImage, price: product.price, oldPrice: product.oldPrice, discountPercent: product.discountPercent, inStock: product.inStock, isBestSeller: product.isBestSeller, isNew: product.isNew, isFeatured: product.isFeatured, isOffer: product.isOffer, isRevision: product.isRevision, isBundle: product.isBundle, freeShipping: product.freeShipping, freeShippingBadgeText: product.freeShippingBadgeText, publisher: product.publisher, stage: product.stage, grade: product.grade, subject: product.subject, educationType: product.educationType, schoolYear: product.schoolYear, author: product.author };
@@ -91,6 +98,7 @@ export default function ProductDetail() {
         {product.descriptionShort && <p className="mt-6 leading-8 text-muted-foreground">{product.descriptionShort}</p>}
         <div className="mt-6 grid gap-3 sm:grid-cols-2"><div className="flex gap-3 rounded-2xl border p-4"><Truck className="h-6 w-6 shrink-0 text-secondary" /><div><strong className="block">توصيل محسوب بدقة</strong><span className="text-xs text-muted-foreground">{deliveryRange}</span></div></div><div className="flex gap-3 rounded-2xl border p-4"><ShieldCheck className="h-6 w-6 shrink-0 text-emerald-600" /><div><strong className="block">الدفع عند الاستلام</strong><span className="text-xs text-muted-foreground">الوسيلة الفعالة حاليًا</span></div></div></div>
         <div className="mt-6 flex flex-wrap gap-3"><div className="flex h-13 items-center rounded-xl border"><Button variant="ghost" size="icon" aria-label="تقليل الكمية" title="تقليل الكمية" onClick={() => setQuantity(value => Math.max(1, value - 1))}><Minus className="h-4 w-4" /></Button><span className="w-10 text-center font-black">{quantity}</span><Button variant="ghost" size="icon" aria-label="زيادة الكمية" title="زيادة الكمية" onClick={() => setQuantity(value => Math.min(product.stockQuantity ?? 1, value + 1))}><Plus className="h-4 w-4" /></Button></div><Button size="lg" disabled={!product.inStock || addToCart.isPending} onClick={() => add(false)} className="h-13 flex-1 rounded-xl text-base"><ShoppingCart className="ml-2 h-5 w-5" /> إضافة للسلة</Button><Button size="lg" variant="secondary" disabled={!product.inStock || addToCart.isPending} onClick={() => add(true)} className="h-13 flex-1 rounded-xl text-base text-white"><Check className="ml-2 h-5 w-5" /> اشترِ الآن</Button></div>
+        <Button variant="outline" className="mt-3 h-12 rounded-xl border-sky-200 text-sky-700 hover:bg-sky-50" onClick={() => websiteChat.openChat({ path: `/product/${product.slug}`, type: "product", productId: product.id })}><MessageCircle className="ml-2 h-5 w-5" /> اسأل فريق المكتبة عن هذا المنتج</Button>
         {whatsapp && <Button variant="outline" className="mt-3 h-12 rounded-xl border-emerald-200 text-emerald-700 hover:bg-emerald-50" asChild><a href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(`أريد الاستفسار عن: ${product.nameAr}\n${window.location.href}`)}`} target="_blank" rel="noreferrer"><FaWhatsapp className="ml-2 h-5 w-5" /> اسأل عن المنتج عبر واتساب</a></Button>}
       </section>
     </div>

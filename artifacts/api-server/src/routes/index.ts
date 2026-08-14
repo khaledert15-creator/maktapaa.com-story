@@ -15,6 +15,7 @@ import adminReportsRouter from "./admin/reports";
 import adminShippingRouter from "./admin/shipping";
 import adminManagementRouter from "./admin/management";
 import adminClassificationsRouter from "./admin/classifications";
+import websiteChatRouter from "./website-chat";
 
 const router: IRouter = Router();
 
@@ -25,6 +26,7 @@ router.use(contentRouter);
 router.use(shippingRouter);
 router.use(cartRouter);
 router.use(ordersRouter);
+router.use(websiteChatRouter);
 router.use(adminDashboardRouter);
 router.use(adminProductsRouter);
 router.use(adminClassificationsRouter);
