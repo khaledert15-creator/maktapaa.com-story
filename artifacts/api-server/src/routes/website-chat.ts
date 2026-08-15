@@ -35,6 +35,7 @@ const attachmentUpload = multer({
   storage: multer.memoryStorage(),
   limits: { files: 1, fileSize: config.WEBSITE_CHAT_ATTACHMENT_MAX_BYTES },
 });
+const receiveAttachment = attachmentUpload.single("file");
 const chatRateKey = (req: Request) => String(req.session.customerId ?? req.session.websiteChatGuestId ?? req.ip);
 const regularLimit = rateLimit({ namespace: "website-chat", windowMs: 60_000, max: 120, key: chatRateKey });
 const sendLimit = rateLimit({ namespace: "website-chat-send", windowMs: 60_000, max: 20, key: chatRateKey });
@@ -45,6 +46,39 @@ function requireWebsiteChat(_req: Request, res: Response, next: NextFunction): v
     return;
   }
   next();
+}
+
+function handleAttachmentUpload(req: Request, res: Response, next: NextFunction): void {
+  receiveAttachment(req, res, error => {
+    if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE") {
+      res.status(413).json({ error: "حجم الملف أكبر من الحد المسموح", code: "CHAT_ATTACHMENT_TOO_LARGE" });
+      return;
+    }
+    if (error) {
+      res.status(400).json({ error: "تعذر قراءة الملف المرفق", code: "CHAT_ATTACHMENT_INVALID" });
+      return;
+    }
+    next();
+  });
+}
+
+async function fetchChatAttachment(remoteUrl: string): Promise<globalThis.Response> {
+  const allowedOrigin = new URL(config.CHATWOOT_BASE_URL!).origin;
+  let currentUrl = remoteUrl;
+  for (let redirectCount = 0; redirectCount <= 3; redirectCount += 1) {
+    const parsed = new URL(currentUrl);
+    if (parsed.origin !== allowedOrigin) throw new Error("CHAT_ATTACHMENT_ORIGIN_INVALID");
+    const response = await fetch(parsed, {
+      redirect: "manual",
+      signal: AbortSignal.timeout(config.CHATWOOT_REQUEST_TIMEOUT_MS),
+    });
+    if (response.status < 300 || response.status >= 400) return response;
+    const location = response.headers.get("location");
+    if (!location || redirectCount === 3) throw new Error("CHAT_ATTACHMENT_REDIRECT_INVALID");
+    await response.body?.cancel();
+    currentUrl = new URL(location, parsed).toString();
+  }
+  throw new Error("CHAT_ATTACHMENT_REDIRECT_INVALID");
 }
 
 function sendKnownError(error: unknown, res: Response): boolean {
@@ -134,7 +168,7 @@ router.post("/chat/typing", requireWebsiteChat, regularLimit, async (req, res): 
   res.status(204).end();
 });
 
-router.post("/chat/attachments", requireWebsiteChat, sendLimit, attachmentUpload.single("file"), async (req, res): Promise<void> => {
+router.post("/chat/attachments", requireWebsiteChat, sendLimit, handleAttachmentUpload, async (req, res): Promise<void> => {
   if (!req.file) { res.status(400).json({ error: "اختر ملفًا لإرساله" }); return; }
   const allowedImageMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
   const pdf = req.file.mimetype === "application/pdf" && req.file.buffer.subarray(0, 5).toString("ascii") === "%PDF-";
@@ -161,11 +195,22 @@ router.get("/chat/attachments/:messageId/:index", requireWebsiteChat, regularLim
   if (!messageId.success || !index.success) { res.status(400).json({ error: "رابط الملف غير صحيح" }); return; }
   const thread = await safelyResolve(req, res); if (!thread) return;
   const remoteUrl = await getWebsiteChatAttachment(thread, messageId.data, index.data);
-  const response = await fetch(remoteUrl, { redirect: "error", signal: AbortSignal.timeout(config.CHATWOOT_REQUEST_TIMEOUT_MS) });
+  let response: globalThis.Response;
+  try {
+    response = await fetchChatAttachment(remoteUrl);
+  } catch {
+    res.status(502).json({ error: "تعذر تحميل الملف" });
+    return;
+  }
   if (!response.ok) { res.status(502).json({ error: "تعذر تحميل الملف" }); return; }
   const mimeType = response.headers.get("content-type")?.split(";")[0] ?? "application/octet-stream";
   if (!["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(mimeType)) {
     res.status(415).json({ error: "نوع الملف غير مدعوم" }); return;
+  }
+  const contentLength = Number(response.headers.get("content-length") ?? 0);
+  if (Number.isFinite(contentLength) && contentLength > config.WEBSITE_CHAT_ATTACHMENT_MAX_BYTES) {
+    res.status(413).json({ error: "حجم الملف أكبر من الحد المسموح" });
+    return;
   }
   const body = Buffer.from(await response.arrayBuffer());
   if (body.length > config.WEBSITE_CHAT_ATTACHMENT_MAX_BYTES) { res.status(413).json({ error: "حجم الملف أكبر من الحد المسموح" }); return; }

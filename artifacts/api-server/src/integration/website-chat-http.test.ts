@@ -131,7 +131,8 @@ async function request(path: string, cookie = "", init: RequestInit = {}) {
 test("custom chat HTTP workflow keeps guests isolated and preserves the thread after registration", async () => {
   const configResponse = await request("/api/chat/config");
   assert.equal(configResponse.response.status, 200);
-  assert.equal((await configResponse.response.json() as { enabled: boolean }).enabled, true);
+  const chatConfig = await configResponse.response.json() as { enabled: boolean; attachmentMaxBytes: number };
+  assert.equal(chatConfig.enabled, true);
 
   const guestA = await request("/api/chat/session", "", { method: "POST", body: JSON.stringify({ context: { path: "/cart", type: "cart" } }) });
   assert.equal(guestA.response.status, 200);
@@ -147,6 +148,17 @@ test("custom chat HTTP workflow keeps guests isolated and preserves the thread a
   const guestBMessages = await request(`/api/chat/messages?sourceId=source-1&conversationId=2001`, guestB.cookie);
   assert.equal(guestBMessages.response.status, 200);
   assert.deepEqual((await guestBMessages.response.json() as { messages: unknown[] }).messages, [], "client-supplied remote IDs cannot cross guest boundaries");
+
+  const invalidAttachment = new FormData();
+  invalidAttachment.append("file", new Blob(["not allowed"], { type: "text/plain" }), "invalid.txt");
+  const invalidAttachmentResponse = await request("/api/chat/attachments", guestA.cookie, { method: "POST", body: invalidAttachment });
+  assert.equal(invalidAttachmentResponse.response.status, 400);
+
+  const oversizedAttachment = new FormData();
+  oversizedAttachment.append("file", new Blob([new Uint8Array(chatConfig.attachmentMaxBytes + 1)], { type: "image/png" }), "oversized.png");
+  const oversizedAttachmentResponse = await request("/api/chat/attachments", guestA.cookie, { method: "POST", body: oversizedAttachment });
+  assert.equal(oversizedAttachmentResponse.response.status, 413);
+  assert.equal((await oversizedAttachmentResponse.response.json() as { code?: string }).code, "CHAT_ATTACHMENT_TOO_LARGE");
 
   const suffix = randomUUID();
   const registration = await request("/api/auth/register", guestA.cookie, {

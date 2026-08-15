@@ -69,9 +69,11 @@ export function WebsiteChatProvider({ children }: { children: ReactNode }) {
   const pollTimerRef = useRef<number | null>(null);
   const typingTimerRef = useRef<number | null>(null);
   const isOpenRef = useRef(false);
+  const startedRef = useRef(false);
   const pageContextRef = useRef(pageContext);
 
   useEffect(() => { isOpenRef.current = isOpen; }, [isOpen]);
+  useEffect(() => { startedRef.current = started; }, [started]);
   useEffect(() => { pageContextRef.current = pageContext; }, [pageContext]);
 
   useEffect(() => {
@@ -86,8 +88,8 @@ export function WebsiteChatProvider({ children }: { children: ReactNode }) {
     if (location.startsWith("/admin")) return;
     const next = defaultContext(location);
     setPageContextState(next);
-    if (started) websiteChatApi.updateContext(next).catch(() => undefined);
-  }, [location, started]);
+    if (startedRef.current) websiteChatApi.updateContext(next).catch(() => undefined);
+  }, [location]);
 
   const clearPolling = useCallback(() => {
     if (pollTimerRef.current !== null) window.clearInterval(pollTimerRef.current);
@@ -118,6 +120,7 @@ export function WebsiteChatProvider({ children }: { children: ReactNode }) {
       const payload = JSON.parse((event as MessageEvent).data) as { status?: ConnectionStatus };
       setStatus(payload.status === "connected" ? "connected" : "reconnecting");
       if (payload.status === "connected") clearPolling();
+      else startPolling();
     });
     source.addEventListener("message", event => {
       const message = JSON.parse((event as MessageEvent).data) as WebsiteChatMessage;

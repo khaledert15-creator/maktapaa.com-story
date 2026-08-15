@@ -101,6 +101,10 @@ export class ChatwootClient {
       method: "PATCH",
       query: { identifier_hash: this.identifierHash(identifier) },
       json: {
+        // Chatwoot validates identifier_hash against the identifier supplied
+        // on contact updates. Omitting it makes Chatwoot 4.15 hash an empty
+        // value and reject an otherwise valid server-side HMAC.
+        identifier,
         name: input.name,
         email: input.email || undefined,
         phone_number: input.phoneNumber || undefined,

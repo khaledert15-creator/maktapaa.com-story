@@ -40,6 +40,14 @@ export interface WebsiteChatIdentity {
   phoneNumber: string | null;
 }
 
+export function toChatwootE164(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const digits = value.replace(/\D/g, "");
+  if (/^01[0125]\d{8}$/.test(digits)) return `+20${digits.slice(1)}`;
+  if (/^201[0125]\d{8}$/.test(digits)) return `+${digits}`;
+  return null;
+}
+
 export async function buildWebsiteChatContext(req: Request, page?: WebsiteChatPageContext): Promise<{
   identity: WebsiteChatIdentity;
   customAttributes: Record<string, string | number | boolean | null>;
@@ -120,7 +128,7 @@ export async function buildWebsiteChatContext(req: Request, page?: WebsiteChatPa
     identity: {
       name: customer?.name ?? "زائر مكتبة دوت كوم",
       email: customer?.email ?? null,
-      phoneNumber: customer?.primaryPhone ?? null,
+      phoneNumber: toChatwootE164(customer?.primaryPhone),
     },
     customAttributes: attributes,
   };

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { createServer, type Server } from "node:http";
 import { createHmac } from "node:crypto";
 import { ChatwootClient } from "./chatwoot-client";
+import { toChatwootE164 } from "./website-chat-context";
 import {
   decryptWebsiteChatSecret,
   encryptWebsiteChatSecret,
@@ -21,6 +22,13 @@ test("website chat mapping secrets are encrypted at rest and reject tampering", 
   parts[1] = tamperedTag.toString("base64url");
   assert.throws(() => decryptWebsiteChatSecret(parts.join("."), secret));
   assert.notEqual(hashWebsiteChatGuestKey("guest-a"), hashWebsiteChatGuestKey("guest-b"));
+});
+
+test("Egyptian customer phones are converted to Chatwoot E.164 without forwarding invalid values", () => {
+  assert.equal(toChatwootE164("01012345678"), "+201012345678");
+  assert.equal(toChatwootE164("+20 10 1234 5678"), "+201012345678");
+  assert.equal(toChatwootE164("123"), null);
+  assert.equal(toChatwootE164(null), null);
 });
 
 let chatwootServer: Server;
@@ -65,6 +73,15 @@ test("Chatwoot client uses the official public API contract and server-side iden
   const contactBody = JSON.parse(contactRequest.body) as { identifier_hash: string; custom_attributes: { website_path: string } };
   assert.equal(contactBody.identifier_hash, createHmac("sha256", hmacToken).update("maktaba_guest_abc").digest("hex"));
   assert.equal(contactBody.custom_attributes.website_path, "/product/test");
+
+  await client.updateContact(contact.source_id, "maktaba_guest_abc", {
+    name: "زائر محدث",
+    customAttributes: { website_path: "/cart" },
+  });
+  const updateRequest = requests.find(item => item.path.includes("/contacts/source-7?") && item.method === "PATCH");
+  assert.ok(updateRequest);
+  assert.equal(new URL(updateRequest.path, chatwootBaseUrl).searchParams.get("identifier_hash"), createHmac("sha256", hmacToken).update("maktaba_guest_abc").digest("hex"));
+  assert.equal((JSON.parse(updateRequest.body) as { identifier: string }).identifier, "maktaba_guest_abc");
 
   assert.deepEqual(await client.listConversations(contact.source_id), []);
   assert.equal((await client.createConversation(contact.source_id)).id, 42);
