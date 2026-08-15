@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Request } from "express";
-import { db, websiteChatThreadsTable, type WebsiteChatThread } from "@workspace/db";
+import { customersTable, db, websiteChatThreadsTable, type WebsiteChatThread } from "@workspace/db";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { config } from "../lib/config";
 import { logger } from "../lib/logger";
@@ -59,7 +59,15 @@ function remoteIdentifier(thread: WebsiteChatThread): string {
 
 async function findOrCreateOwnedThread(req: Request): Promise<WebsiteChatThread> {
   const guestKeyHash = hashWebsiteChatGuestKey(ensureGuestId(req));
-  const customerId = req.session.customerId;
+  let customerId = req.session.customerId;
+  if (customerId) {
+    const [customer] = await db.select({ id: customersTable.id }).from(customersTable).where(eq(customersTable.id, customerId));
+    if (!customer) {
+      delete req.session.customerId;
+      delete req.session.customerName;
+      customerId = undefined;
+    }
+  }
   if (customerId) {
     const [customerThread] = await db.select().from(websiteChatThreadsTable).where(eq(websiteChatThreadsTable.customerId, customerId));
     if (customerThread) return customerThread;

@@ -166,16 +166,26 @@ test("custom chat HTTP workflow keeps guests isolated and preserves the thread a
     body: JSON.stringify({ name: "عميل الدردشة", mobile: `010${String(Math.floor(Math.random() * 100_000_000)).padStart(8, "0")}`, email: `website-chat-${suffix}@example.test`, password: `Secure-${suffix}` }),
   });
   assert.equal(registration.response.status, 201);
+  const registeredCustomer = (await registration.response.json() as { customer: { id: number } }).customer;
   const afterLogin = await request("/api/chat/messages", registration.cookie);
   assert.equal(afterLogin.response.status, 200);
-  assert.equal((await afterLogin.response.json() as { messages: { id: number }[] }).messages.some(item => item.id === messageA.id), true, "guest conversation survives session regeneration and account claim");
+  const afterLoginMessages = (await afterLogin.response.json() as { messages: { id: number }[] }).messages;
+  assert.equal(afterLoginMessages.some(item => item.id === messageA.id), true, "guest conversation survives session regeneration and account claim");
 
-  const { db, websiteChatThreadsTable } = dbModule;
+  const { db, websiteChatThreadsTable, customersTable } = dbModule;
+  const { eq } = await import("drizzle-orm");
   const rows = await db.select().from(websiteChatThreadsTable);
   const testRows = rows.filter(row => row.createdAt >= testStartedAt);
   assert.equal(testRows.length, 2);
   assert.ok(testRows.some(row => row.customerId && row.guestKeyHash === null));
   assert.ok(testRows.every(row => !row.chatwootSourceIdEncrypted?.includes("source-")), "Chatwoot source IDs are encrypted in PostgreSQL");
+
+  await db.delete(customersTable).where(eq(customersTable.id, registeredCustomer.id));
+  const staleCustomerSession = await request("/api/chat/session", registration.cookie, {
+    method: "POST",
+    body: JSON.stringify({ context: { path: "/", type: "home" } }),
+  });
+  assert.equal(staleCustomerSession.response.status, 200, "a deleted customer's stale session falls back to an isolated guest instead of returning 500");
 
   rejectContactCreation = true;
   const failedGuest = await request("/api/chat/session", "", { method: "POST", body: JSON.stringify({ context: { path: "/", type: "home" } }) });
