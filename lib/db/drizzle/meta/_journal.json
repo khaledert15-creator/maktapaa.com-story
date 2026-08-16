@@ -120,6 +120,20 @@
       "when": 1786904850000,
       "tag": "0016_silent_sentinel",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1786908210662,
+      "tag": "0017_parched_leo",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1786909322253,
+      "tag": "0018_glorious_rafael_vega",
+      "breakpoints": true
     }
   ]
 }

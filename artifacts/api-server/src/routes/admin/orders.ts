@@ -20,6 +20,9 @@ function mapAdminOrder(order: typeof ordersTable.$inferSelect, items: typeof ord
   return {
     id: order.id, orderNumber: order.orderNumber,
     status: order.status, paymentStatus: order.paymentStatus, paymentMethod: order.paymentMethod,
+    paymentPlan: order.paymentPlan, transferMethod: order.transferMethod,
+    requiredPaymentAmount: order.requiredPaymentAmount == null ? null : Number(order.requiredPaymentAmount),
+    paidAmount: Number(order.paidAmount), remainingAmount: order.remainingAmount == null ? null : Number(order.remainingAmount),
     customerName: order.customerName, mobile: order.mobile, primaryPhone: order.mobile, primaryPhoneHasWhatsApp: order.primaryPhoneHasWhatsApp, altMobile: order.altMobile, alternatePhone: order.altMobile, alternatePhoneHasWhatsApp: order.alternatePhoneHasWhatsApp, preferredWhatsAppPhone: order.preferredWhatsAppPhone,
     governorate: order.governorateName, city: order.city,
     detailedAddress: order.detailedAddress, landmark: order.landmark,
@@ -73,7 +76,9 @@ router.get("/admin/orders", requireAdminPermission("orders.view"), async (req, r
     items: items.map(({ order: o, itemCount }) => ({
       id: o.id, orderNumber: o.orderNumber, customerName: o.customerName, mobile: o.mobile,
       governorate: o.governorateName, status: o.status, paymentStatus: o.paymentStatus,
-      paymentMethod: o.paymentMethod, total: Number(o.total), itemCount, createdAt: o.createdAt,
+      paymentMethod: o.paymentMethod, paymentPlan: o.paymentPlan, transferMethod: o.transferMethod,
+      paidAmount: Number(o.paidAmount), remainingAmount: o.remainingAmount == null ? null : Number(o.remainingAmount),
+      total: Number(o.total), itemCount, createdAt: o.createdAt,
     })),
     total: count, page: pageNum, limit: limitNum,
   });

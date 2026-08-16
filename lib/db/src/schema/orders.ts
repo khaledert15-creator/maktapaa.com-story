@@ -21,7 +21,7 @@ export const orderStatusEnum = pgEnum("order_status", [
   "cancelled",
 ]);
 
-export const paymentMethodEnum = pgEnum("payment_method", ["cash_on_delivery", "fawry"]);
+export const paymentMethodEnum = pgEnum("payment_method", ["cash_on_delivery", "fawry", "manual_transfer"]);
 
 export const paymentStatusEnum = pgEnum("payment_status", [
   "pending",
@@ -30,7 +30,16 @@ export const paymentStatusEnum = pgEnum("payment_status", [
   "failed",
   "refunded",
   "partially_refunded",
+  "awaiting_transfer",
+  "pending_verification",
+  "partially_paid",
+  "fully_paid",
+  "rejected",
+  "needs_review",
 ]);
+
+export const manualPaymentPlanEnum = pgEnum("manual_payment_plan", ["deposit_100", "full"]);
+export const manualTransferMethodEnum = pgEnum("manual_transfer_method", ["instapay", "mobile_wallet"]);
 
 export const ordersTable = pgTable("orders", {
   id: serial("id").primaryKey(),
@@ -56,6 +65,11 @@ export const ordersTable = pgTable("orders", {
   status: orderStatusEnum("status").notNull().default("new"),
   paymentMethod: paymentMethodEnum("payment_method").notNull().default("cash_on_delivery"),
   paymentStatus: paymentStatusEnum("payment_status").notNull().default("pending"),
+  paymentPlan: manualPaymentPlanEnum("payment_plan"),
+  transferMethod: manualTransferMethodEnum("transfer_method"),
+  requiredPaymentAmount: numeric("required_payment_amount", { precision: 10, scale: 2 }),
+  paidAmount: numeric("paid_amount", { precision: 10, scale: 2 }).notNull().default("0"),
+  remainingAmount: numeric("remaining_amount", { precision: 10, scale: 2 }),
 
   subtotal: numeric("subtotal", { precision: 10, scale: 2 }).notNull(),
   discount: numeric("discount", { precision: 10, scale: 2 }).notNull().default("0"),
@@ -83,6 +97,11 @@ export const ordersTable = pgTable("orders", {
   index("orders_mobile_created_idx").on(table.mobile, table.createdAt),
   index("orders_governorate_created_idx").on(table.governorateId, table.createdAt),
   index("orders_created_idx").on(table.createdAt),
+  index("orders_payment_status_created_idx").on(table.paymentStatus, table.createdAt),
+  check("orders_paid_amount_non_negative", sql`${table.paidAmount} >= 0`),
+  check("orders_remaining_amount_non_negative", sql`${table.remainingAmount} IS NULL OR ${table.remainingAmount} >= 0`),
+  check("orders_required_payment_non_negative", sql`${table.requiredPaymentAmount} IS NULL OR ${table.requiredPaymentAmount} >= 0`),
+  check("orders_manual_payment_fields_valid", sql`${table.paymentMethod}::text <> 'manual_transfer' OR (${table.paymentPlan} IS NOT NULL AND ${table.transferMethod} IS NOT NULL AND ${table.requiredPaymentAmount} IS NOT NULL AND ${table.remainingAmount} IS NOT NULL)`),
   check("orders_preferred_whatsapp_valid", sql`${table.preferredWhatsAppPhone} IS NULL OR (${table.primaryPhoneHasWhatsApp} AND ${table.preferredWhatsAppPhone} = ${table.mobile}) OR (${table.alternatePhoneHasWhatsApp} AND ${table.altMobile} IS NOT NULL AND ${table.preferredWhatsAppPhone} = ${table.altMobile})`),
 ]);
 

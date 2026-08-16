@@ -1,12 +1,12 @@
 import { Router, type IRouter } from "express";
-import { db, ordersTable, productsTable, customersTable } from "@workspace/db";
+import { db, ordersTable, paymentAttemptsTable, productsTable, customersTable } from "@workspace/db";
 import { eq, gte, sql, and } from "drizzle-orm";
-import { requireAdminAuth, requireAdminPermission } from "../../lib/auth";
+import { hasAdminPermission, requireAdminAuth, requireAdminPermission } from "../../lib/auth";
 
 const router: IRouter = Router();
 router.use(requireAdminAuth);
 
-router.get("/admin/dashboard/summary", requireAdminPermission("dashboard.view"), async (_req, res): Promise<void> => {
+router.get("/admin/dashboard/summary", requireAdminPermission("dashboard.view"), async (req, res): Promise<void> => {
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const weekStart = new Date(now);
@@ -19,7 +19,7 @@ router.get("/admin/dashboard/summary", requireAdminPermission("dashboard.view"),
     [{ preparingOrders }], [{ shippedOrders }], [{ deliveredOrders }],
     [{ cancelledOrders }], [{ returnedOrders }],
     [{ lowStockCount }], [{ outOfStockCount }],
-    [{ totalCustomers }],
+    [{ totalCustomers }], [{ pendingPaymentCount }],
   ] = await Promise.all([
     db.select({ salesToday: sql<number>`coalesce(sum(total::numeric), 0)` }).from(ordersTable).where(and(gte(ordersTable.createdAt, todayStart), eq(ordersTable.status, "delivered"))),
     db.select({ salesWeek: sql<number>`coalesce(sum(total::numeric), 0)` }).from(ordersTable).where(and(gte(ordersTable.createdAt, weekStart), eq(ordersTable.status, "delivered"))),
@@ -35,6 +35,7 @@ router.get("/admin/dashboard/summary", requireAdminPermission("dashboard.view"),
     db.select({ lowStockCount: sql<number>`count(*)::int` }).from(productsTable).where(and(sql`${productsTable.stockQuantity} > 0 AND ${productsTable.stockQuantity} <= ${productsTable.minStockLevel}` as ReturnType<typeof eq>, eq(productsTable.status, "active"))),
     db.select({ outOfStockCount: sql<number>`count(*)::int` }).from(productsTable).where(and(eq(productsTable.stockQuantity, 0), eq(productsTable.status, "active"))),
     db.select({ totalCustomers: sql<number>`count(*)::int` }).from(customersTable),
+    db.select({ pendingPaymentCount: sql<number>`count(*)::int` }).from(paymentAttemptsTable).where(sql`${paymentAttemptsTable.status} in ('pending_verification', 'needs_review')`),
   ]);
 
   const [avgResult] = await db.select({ avg: sql<number>`coalesce(avg(total::numeric), 0)` }).from(ordersTable);
@@ -43,7 +44,7 @@ router.get("/admin/dashboard/summary", requireAdminPermission("dashboard.view"),
     salesToday: Number(salesToday), salesThisWeek: Number(salesWeek), salesThisMonth: Number(salesMonth),
     totalOrders, newOrders, pendingOrders, preparingOrders, shippedOrders, deliveredOrders,
     cancelledOrders, returnedOrders, lowStockCount, outOfStockCount,
-    avgOrderValue: Number(avgResult.avg), totalCustomers,
+    avgOrderValue: Number(avgResult.avg), totalCustomers, pendingPaymentCount: hasAdminPermission(req, "payments.view") ? pendingPaymentCount : 0,
   });
 });
 
@@ -70,7 +71,9 @@ router.get("/admin/dashboard/recent-orders", requireAdminPermission("dashboard.v
   res.json(orders.map(o => ({
     id: o.id, orderNumber: o.orderNumber, customerName: o.customerName, mobile: o.mobile,
     governorate: o.governorateName, status: o.status, paymentStatus: o.paymentStatus,
-    paymentMethod: o.paymentMethod, total: Number(o.total), itemCount: 0, createdAt: o.createdAt,
+    paymentMethod: o.paymentMethod, paymentPlan: o.paymentPlan, transferMethod: o.transferMethod,
+    paidAmount: Number(o.paidAmount), remainingAmount: o.remainingAmount == null ? null : Number(o.remainingAmount),
+    total: Number(o.total), itemCount: 0, createdAt: o.createdAt,
   })));
 });
 

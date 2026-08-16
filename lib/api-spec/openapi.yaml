@@ -2384,7 +2384,9 @@ components:
         landmark: { type: ["string", "null"] }
         deliveryNotes: { type: ["string", "null"] }
         orderNotes: { type: ["string", "null"] }
-        paymentMethod: { type: string, enum: [cash_on_delivery] }
+        paymentMethod: { type: string, enum: [manual_transfer, cash_on_delivery] }
+        paymentPlan: { type: ["string", "null"], enum: [deposit_100, full, null] }
+        transferMethod: { type: ["string", "null"], enum: [instapay, mobile_wallet, null] }
         couponCode: { type: ["string", "null"] }
         checkoutToken: { type: string, minLength: 12, maxLength: 100 }
         cartItems:
@@ -2421,6 +2423,11 @@ components:
         status: { type: string }
         paymentStatus: { type: string }
         paymentMethod: { type: string }
+        paymentPlan: { type: ["string", "null"] }
+        transferMethod: { type: ["string", "null"] }
+        requiredPaymentAmount: { type: ["number", "null"] }
+        paidAmount: { type: number }
+        remainingAmount: { type: ["number", "null"] }
         customerName: { type: string }
         mobile: { type: string }
         primaryPhone: { type: string }
@@ -2480,6 +2487,11 @@ components:
         orderNumber: { type: string }
         status: { type: string }
         paymentMethod: { type: string }
+        paymentStatus: { type: string }
+        paymentPlan: { type: ["string", "null"] }
+        transferMethod: { type: ["string", "null"] }
+        paidAmount: { type: number }
+        remainingAmount: { type: ["number", "null"] }
         estimatedDeliveryDate: { type: ["string", "null"] }
         trackingNumber: { type: ["string", "null"] }
         shippingCompany: { type: ["string", "null"] }
@@ -2937,6 +2949,10 @@ components:
         status: { type: string }
         paymentStatus: { type: string }
         paymentMethod: { type: string }
+        paymentPlan: { type: ["string", "null"] }
+        transferMethod: { type: ["string", "null"] }
+        paidAmount: { type: number }
+        remainingAmount: { type: ["number", "null"] }
         total: { type: number }
         itemCount: { type: integer }
         createdAt: { type: string }
@@ -2950,6 +2966,11 @@ components:
         status: { type: string }
         paymentStatus: { type: string }
         paymentMethod: { type: string }
+        paymentPlan: { type: ["string", "null"] }
+        transferMethod: { type: ["string", "null"] }
+        requiredPaymentAmount: { type: ["number", "null"] }
+        paidAmount: { type: number }
+        remainingAmount: { type: ["number", "null"] }
         customerName: { type: string }
         mobile: { type: string }
         altMobile: { type: ["string", "null"] }
@@ -3113,6 +3134,7 @@ components:
         outOfStockCount: { type: integer }
         avgOrderValue: { type: number }
         totalCustomers: { type: integer }
+        pendingPaymentCount: { type: integer }
 
     SalesDataPoint:
       type: object

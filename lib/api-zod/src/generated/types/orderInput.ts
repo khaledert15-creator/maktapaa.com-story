@@ -7,6 +7,8 @@
  */
 import type { CartItemInput } from './cartItemInput';
 import type { OrderInputPaymentMethod } from './orderInputPaymentMethod';
+import type { OrderInputPaymentPlan } from './orderInputPaymentPlan';
+import type { OrderInputTransferMethod } from './orderInputTransferMethod';
 
 export interface OrderInput {
   customerName: string;
@@ -27,6 +29,10 @@ export interface OrderInput {
   /** @nullable */
   orderNotes?: string | null;
   paymentMethod: OrderInputPaymentMethod;
+  /** @nullable */
+  paymentPlan?: OrderInputPaymentPlan;
+  /** @nullable */
+  transferMethod?: OrderInputTransferMethod;
   /** @nullable */
   couponCode?: string | null;
   /**

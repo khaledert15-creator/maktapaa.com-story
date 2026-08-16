@@ -6,9 +6,10 @@ import {
   orderStatusHistoryTable, stockMovementsTable, couponsTable, auditLogsTable,
   addressesTable, favoritesTable,
   classificationOptionsTable,
+  manualPaymentSettingsTable,
 } from "@workspace/db";
 import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
+import { and, eq, like } from "drizzle-orm";
 
 async function seed() {
   if (process.env.NODE_ENV === "production" && process.env.ALLOW_PRODUCTION_DEMO_SEED !== "true") throw new Error("Demo seed is disabled in production. Use the one-time admin bootstrap command instead.");
@@ -149,7 +150,7 @@ async function seed() {
     { key: "announcementStartAt", value: "" },
     { key: "announcementEndAt", value: "" },
     { key: "seoTitle", value: "مكتبة دوت كوم — كتبك التعليمية بين يديك" },
-    { key: "seoDescription", value: "متجر الكتب التعليمية الأول في مصر. كتب مدرسية، كتب مراجعة، مناهج لجميع المراحل الدراسية. الدفع عند الاستلام. شحن لكل محافظات مصر." },
+    { key: "seoDescription", value: "كتب الثانوية والبكالوريا والصفوف الأول والثاني والثالث وكتب المدرسين الأونلاين، مع تحويل يدوي آمن ومراجعة بشرية قبل اعتماد الدفع." },
   ];
   for (const { key, value } of settingsToInsert) {
     const existing2 = await db.select().from(siteSettingsTable).where(eq(siteSettingsTable.key, key));
@@ -159,6 +160,15 @@ async function seed() {
   }
   console.log("✅ Site settings");
 
+  const developmentPaymentSettings = [
+    { method: "instapay" as const, displayNameAr: "InstaPay", transferDestination: "maktaba.test@instapay", accountHolderName: "مكتبة دوت كوم — بيانات تطوير", instructionsAr: "حوّل المبلغ المطلوب ثم سجّل الحساب المحول منه. هذه بيانات محلية للاختبار فقط.", isActive: true, sortOrder: 1 },
+    { method: "mobile_wallet" as const, displayNameAr: "محفظة هاتف", transferDestination: "01000000000", accountHolderName: "مكتبة دوت كوم — بيانات تطوير", instructionsAr: "حوّل المبلغ المطلوب ثم سجّل رقم المحفظة المحول منها. هذه بيانات محلية للاختبار فقط.", isActive: true, sortOrder: 2 },
+  ];
+  for (const setting of developmentPaymentSettings) {
+    await db.insert(manualPaymentSettingsTable).values(setting).onConflictDoUpdate({ target: manualPaymentSettingsTable.method, set: setting });
+  }
+  console.log("✅ Local manual payment settings");
+
   // Banners
   const bannersCount = await db.select().from(bannersTable);
   if (bannersCount.length === 0) {
@@ -166,7 +176,7 @@ async function seed() {
       {
         imageUrl: "https://placehold.co/1200x450/1e3a5f/ffffff?text=مكتبة+دوت+كوم",
         titleAr: "كتبك التعليمية بين يديك",
-        subtitleAr: "شحن لكل محافظات مصر — الدفع عند الاستلام",
+        subtitleAr: "كتب الثانوية والبكالوريا والصفوف الثلاثة — تحويل يدوي بمراجعة بشرية",
         badgeText: "اختيارات ذكية لكل طالب",
         primaryButtonText: "ابدأ التصفح",
         primaryButtonUrl: "/catalog",
@@ -202,13 +212,17 @@ async function seed() {
     ]);
     console.log("✅ Banners");
   }
+  await db.update(bannersTable).set({ subtitleAr: "كتب الثانوية والبكالوريا والصفوف الثلاثة — تحويل يدوي بمراجعة بشرية" }).where(and(
+    eq(bannersTable.titleAr, "كتبك التعليمية بين يديك"),
+    like(bannersTable.subtitleAr, "%الدفع عند الاستلام%"),
+  ));
 
   // FAQs
   const faqsCount = await db.select().from(faqsTable);
   if (faqsCount.length === 0) {
     await db.insert(faqsTable).values([
       { questionAr: "ما هي مناطق التوصيل؟", answerAr: "نوصل لجميع محافظات مصر. التوصيل داخل القاهرة والجيزة خلال 24-48 ساعة، وباقي المحافظات خلال 3-7 أيام عمل.", sortOrder: 1 },
-      { questionAr: "هل يمكن الدفع عند الاستلام؟", answerAr: "نعم، الدفع عند الاستلام متاح لجميع الطلبات في جميع المحافظات. لا نطلب منك أي مبلغ مقدم.", sortOrder: 2 },
+      { questionAr: "كيف يتم تأكيد الطلب؟", answerAr: "اختر دفع 100 جنيه لتأكيد الطلب والباقي عند الاستلام، أو دفع كامل القيمة مقدمًا، ثم سجّل بيانات التحويل لتراجعها المكتبة.", sortOrder: 2 },
       { questionAr: "ما هي سياسة الاستبدال والإرجاع؟", answerAr: "يمكنك إرجاع أو استبدال الكتاب خلال 7 أيام من استلام الطلب إذا كان في حالته الأصلية غير المستخدمة.", sortOrder: 3 },
       { questionAr: "كيف أتتبع طلبي؟", answerAr: "بعد تأكيد طلبك ستصلك رسالة برقم الطلب. يمكنك تتبع الطلب من صفحة التتبع باستخدام رقم الطلب ورقم هاتفك.", sortOrder: 4 },
       { questionAr: "هل الكتب أصلية ومعتمدة؟", answerAr: "جميع الكتب أصلية ومعتمدة من دور النشر الرسمية ومطابقة للمناهج المعتمدة من وزارة التربية والتعليم.", sortOrder: 5 },
@@ -347,6 +361,7 @@ async function seed() {
       { name: "مسؤول المبيعات", email: "sales@maktaba.com", role: "sales" as const, permissions: ["dashboard.view", "orders.view", "orders.edit", "orders.whatsapp", "customers.view", "customers.edit"] },
       { name: "أمين المخزن", email: "warehouse@maktaba.com", role: "warehouse" as const, permissions: ["products.view", "inventory.view", "inventory.adjust"] },
       { name: "مدير المحتوى", email: "content@maktaba.com", role: "content_manager" as const, permissions: ["products.view", "products.create", "products.edit", "products.images.manage", "products.notices.manage", "classifications.view", "classifications.manage", "content.view", "content.manage", "branding.manage"] },
+      { name: "مسؤول الحسابات", email: "accountant@maktaba.com", role: "accountant" as const, permissions: ["dashboard.view", "orders.view", "payments.view", "payments.review", "payments.confirm", "payments.reject", "payments.history", "reports.view"] },
     ];
     const employeePasswordHash = await bcrypt.hash("Employee@2025", 12);
     for (const employee of employeeFixtures) {

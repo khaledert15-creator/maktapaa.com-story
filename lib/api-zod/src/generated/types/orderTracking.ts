@@ -11,6 +11,14 @@ export interface OrderTracking {
   orderNumber: string;
   status: string;
   paymentMethod?: string;
+  paymentStatus?: string;
+  /** @nullable */
+  paymentPlan?: string | null;
+  /** @nullable */
+  transferMethod?: string | null;
+  paidAmount?: number;
+  /** @nullable */
+  remainingAmount?: number | null;
   /** @nullable */
   estimatedDeliveryDate?: string | null;
   /** @nullable */

@@ -32,7 +32,7 @@ export function buildOrderWhatsAppLink(order: WhatsAppOrder, items: WhatsAppOrde
     `الخصم: ${money(String(Number(order.discount) + Number(order.couponDiscount)))}`,
     `الإجمالي: ${money(order.total)}`,
     "",
-    `طريقة الدفع: ${order.paymentMethod === "cash_on_delivery" ? "الدفع عند الاستلام" : order.paymentMethod}`,
+    `طريقة الدفع: ${order.paymentMethod === "cash_on_delivery" ? "الدفع عند الاستلام (طلب سابق)" : order.paymentMethod === "manual_transfer" ? "تحويل يدوي" : order.paymentMethod}`,
     `حالة الطلب: ${statusLabels[order.status] || order.status}`,
     "",
     "العنوان:",

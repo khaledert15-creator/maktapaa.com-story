@@ -25,6 +25,7 @@ const permissionGroups = [
   { title: "المنتجات", items: [["products.view", "عرض المنتجات"], ["products.create", "إضافة منتجات"], ["products.edit", "تعديل المنتجات"], ["prices.edit", "تعديل الأسعار"], ["products.images.manage", "إدارة الصور"], ["products.notices.manage", "إدارة تنبيهات المنتجات"], ["products.delete", "أرشفة أو حذف المنتجات"]] },
   { title: "المخزون", items: [["inventory.view", "عرض المخزون"], ["inventory.adjust", "تسجيل حركات المخزون"]] },
   { title: "الطلبات والعملاء", items: [["orders.view", "عرض الطلبات"], ["orders.edit", "تحديث الطلبات والإلغاءات"], ["orders.whatsapp", "فتح واتساب الطلب"], ["customers.view", "عرض العملاء"], ["customers.edit", "تعديل العملاء وحظرهم"]] },
+  { title: "المدفوعات اليدوية", items: [["payments.view", "عرض المدفوعات"], ["payments.review", "مراجعة المدفوعات"], ["payments.confirm", "تأكيد المدفوعات"], ["payments.reject", "رفض المدفوعات"], ["payments.history", "عرض سجل المرسل"], ["payments.override", "تجاوز رقم عملية مكرر"], ["payments.settings", "تعديل بيانات التحويل"]] },
   { title: "التشغيل", items: [["coupons.view", "عرض الكوبونات"], ["coupons.manage", "إدارة الكوبونات"], ["shipping.view", "عرض الشحن"], ["shipping.edit", "تعديل الشحن"], ["classifications.view", "عرض التصنيفات"], ["classifications.manage", "إدارة التصنيفات"]] },
   { title: "المحتوى والإدارة", items: [["content.view", "عرض المحتوى"], ["content.manage", "تعديل المحتوى"], ["branding.manage", "إدارة الهوية"], ["reports.view", "عرض التقارير"], ["audit.view", "عرض سجل الإجراءات"], ["employees.manage", "إدارة الموظفين"]] },
 ] as const;
@@ -34,7 +35,7 @@ const rolePresets: Record<string, string[]> = {
   customer_service: ["dashboard.view", "orders.view", "orders.edit", "orders.whatsapp", "customers.view", "customers.edit"],
   warehouse: ["dashboard.view", "products.view", "inventory.view", "inventory.adjust", "orders.view"],
   shipping: ["dashboard.view", "orders.view", "orders.edit", "shipping.view"],
-  accountant: ["dashboard.view", "orders.view", "reports.view"],
+  accountant: ["dashboard.view", "orders.view", "payments.view", "payments.review", "payments.confirm", "payments.reject", "payments.history", "reports.view"],
   content_manager: ["dashboard.view", "products.view", "products.edit", "products.images.manage", "products.notices.manage", "classifications.view", "classifications.manage", "content.view", "content.manage"],
   administrator: [],
 };

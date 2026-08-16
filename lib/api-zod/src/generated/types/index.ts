@@ -86,6 +86,8 @@ export * from './lowStockProduct';
 export * from './order';
 export * from './orderInput';
 export * from './orderInputPaymentMethod';
+export * from './orderInputPaymentPlan';
+export * from './orderInputTransferMethod';
 export * from './orderItem';
 export * from './orderListResponse';
 export * from './orderShippingRuleSnapshot';

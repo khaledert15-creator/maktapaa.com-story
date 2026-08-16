@@ -39,6 +39,7 @@ const AdminContent = lazy(() => import("@/pages/AdminContent"));
 const AdminReports = lazy(() => import("@/pages/AdminReports"));
 const AdminEmployees = lazy(() => import("@/pages/AdminEmployees"));
 const AdminReviews = lazy(() => import("@/pages/AdminReviews"));
+const AdminPayments = lazy(() => import("@/pages/AdminPayments"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
 export function AppRouter() {
@@ -93,6 +94,7 @@ export function AppRouter() {
           </AdminLayout>
         )}
       </Route>
+      <Route path="/admin/payments">{() => <AdminLayout requiredPermission="payments.view"><AdminPayments /></AdminLayout>}</Route>
       <Route path="/admin/customers">{() => <AdminLayout requiredPermission="customers.view"><AdminCustomers /></AdminLayout>}</Route>
       <Route path="/admin/inventory">{() => <AdminLayout requiredPermission="inventory.view"><AdminInventory /></AdminLayout>}</Route>
       <Route path="/admin/coupons">{() => <AdminLayout requiredPermission="coupons.view"><AdminCoupons /></AdminLayout>}</Route>

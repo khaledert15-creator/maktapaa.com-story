@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, ordersTable, orderItemsTable, orderStatusHistoryTable, cancellationRequestsTable, productsTable, governoratesTable, citiesTable, customersTable, stockMovementsTable, favoritesTable, addressesTable } from "@workspace/db";
+import { db, ordersTable, orderItemsTable, orderStatusHistoryTable, cancellationRequestsTable, productsTable, governoratesTable, citiesTable, customersTable, stockMovementsTable, favoritesTable, addressesTable, manualPaymentSettingsTable } from "@workspace/db";
 import { eq, and, desc, gte, sql, inArray } from "drizzle-orm";
 import { calculateShipping } from "../services/shipping";
 import { enrichProductSummaries } from "../services/catalog";
@@ -9,10 +9,14 @@ import { egyptianPhoneSchema, optionalEgyptianPhoneSchema, resolvePreferredWhats
 import { rateLimit } from "../lib/rate-limit";
 import { writeAuditLog } from "../services/audit";
 import { isPostgresUniqueViolation, withUniqueOrderNumber } from "../services/order-number";
+import { calculateRequiredPayment } from "../services/manual-payments";
 
 const router: IRouter = Router();
 const orderRateLimit = rateLimit({ namespace: "order-create", windowMs: 15 * 60_000, max: 20 });
-const orderCreateSchema = z.object({ customerName: z.string().trim().min(2).max(200), mobile: egyptianPhoneSchema, primaryPhoneHasWhatsApp: z.boolean().default(true), altMobile: optionalEgyptianPhoneSchema, alternatePhoneHasWhatsApp: z.boolean().default(false), preferredWhatsAppPhone: optionalEgyptianPhoneSchema, governorateId: z.coerce.number().int().positive(), city: z.string().trim().min(2).max(200), detailedAddress: z.string().trim().min(5).max(2000), landmark: z.string().max(500).nullable().optional(), deliveryNotes: z.string().max(2000).nullable().optional(), orderNotes: z.string().max(2000).nullable().optional(), paymentMethod: z.literal("cash_on_delivery").optional(), couponCode: z.string().trim().max(50).transform(value => value.toUpperCase()).nullable().optional(), checkoutToken: z.string().min(12).max(100).nullable().optional(), cartItems: z.array(z.object({ productId: z.coerce.number().int().positive(), quantity: z.coerce.number().int().positive().max(99) })).max(100).optional() });
+const orderCreateSchema = z.object({ customerName: z.string().trim().min(2).max(200), mobile: egyptianPhoneSchema, primaryPhoneHasWhatsApp: z.boolean().default(true), altMobile: optionalEgyptianPhoneSchema, alternatePhoneHasWhatsApp: z.boolean().default(false), preferredWhatsAppPhone: optionalEgyptianPhoneSchema, governorateId: z.coerce.number().int().positive(), city: z.string().trim().min(2).max(200), detailedAddress: z.string().trim().min(5).max(2000), landmark: z.string().max(500).nullable().optional(), deliveryNotes: z.string().max(2000).nullable().optional(), orderNotes: z.string().max(2000).nullable().optional(), paymentMethod: z.enum(["manual_transfer", "cash_on_delivery"]).default("manual_transfer"), paymentPlan: z.enum(["deposit_100", "full"]).nullable().optional(), transferMethod: z.enum(["instapay", "mobile_wallet"]).nullable().optional(), couponCode: z.string().trim().max(50).transform(value => value.toUpperCase()).nullable().optional(), checkoutToken: z.string().min(12).max(100).nullable().optional(), cartItems: z.array(z.object({ productId: z.coerce.number().int().positive(), quantity: z.coerce.number().int().positive().max(99) })).max(100).optional() }).superRefine((value, context) => {
+  if (value.paymentMethod === "manual_transfer" && !value.paymentPlan) context.addIssue({ code: "custom", path: ["paymentPlan"], message: "اختر قيمة الدفع المطلوبة" });
+  if (value.paymentMethod === "manual_transfer" && !value.transferMethod) context.addIssue({ code: "custom", path: ["transferMethod"], message: "اختر وسيلة التحويل" });
+});
 const cancellationRequestSchema = z.object({ reason: z.string().trim().min(5).max(500) });
 const profileSchema = z.object({ name: z.string().trim().min(2).max(200).optional(), email: z.string().email().max(200).nullable().optional(), mobile: egyptianPhoneSchema.optional(), primaryPhone: egyptianPhoneSchema.optional(), primaryPhoneHasWhatsApp: z.boolean().optional(), alternatePhone: optionalEgyptianPhoneSchema, alternatePhoneHasWhatsApp: z.boolean().optional(), preferredWhatsAppPhone: optionalEgyptianPhoneSchema });
 const addressSchema = z.object({ governorateId: z.coerce.number().int().positive(), city: z.string().trim().min(2).max(200), detailedAddress: z.string().trim().min(5).max(2000), landmark: z.string().trim().max(500).nullable().optional(), primaryPhone: egyptianPhoneSchema.optional(), primaryPhoneHasWhatsApp: z.boolean().optional(), alternatePhone: optionalEgyptianPhoneSchema, alternatePhoneHasWhatsApp: z.boolean().optional(), preferredWhatsAppPhone: optionalEgyptianPhoneSchema, isDefault: z.boolean().optional() });
@@ -21,6 +25,9 @@ function mapOrder(order: typeof ordersTable.$inferSelect, items: typeof orderIte
   return {
     id: order.id, orderNumber: order.orderNumber,
     status: order.status, paymentStatus: order.paymentStatus, paymentMethod: order.paymentMethod,
+    paymentPlan: order.paymentPlan, transferMethod: order.transferMethod,
+    requiredPaymentAmount: order.requiredPaymentAmount == null ? null : Number(order.requiredPaymentAmount),
+    paidAmount: Number(order.paidAmount), remainingAmount: order.remainingAmount == null ? null : Number(order.remainingAmount),
     customerName: order.customerName, mobile: order.mobile, primaryPhone: order.mobile, primaryPhoneHasWhatsApp: order.primaryPhoneHasWhatsApp, altMobile: order.altMobile, alternatePhone: order.altMobile, alternatePhoneHasWhatsApp: order.alternatePhoneHasWhatsApp, preferredWhatsAppPhone: order.preferredWhatsAppPhone,
     governorate: order.governorateName, city: order.city,
     detailedAddress: order.detailedAddress, landmark: order.landmark,
@@ -103,6 +110,10 @@ router.post("/orders", orderRateLimit, async (req, res): Promise<void> => {
 
   const [matchedCity] = await db.select().from(citiesTable).where(and(eq(citiesTable.governorateId, gov.id), eq(citiesTable.nameAr, city), eq(citiesTable.isActive, true)));
   const customerId = req.session.customerId ? (req.session.customerId as number) : null;
+  if (input.paymentMethod === "manual_transfer") {
+    const [activePaymentMethod] = await db.select({ id: manualPaymentSettingsTable.id }).from(manualPaymentSettingsTable).where(and(eq(manualPaymentSettingsTable.method, input.transferMethod!), eq(manualPaymentSettingsTable.isActive, true)));
+    if (!activePaymentMethod) { res.status(400).json({ error: "وسيلة التحويل المختارة غير متاحة حاليًا" }); return; }
+  }
 
   let order: typeof ordersTable.$inferSelect;
   let duplicateSubmission = false;
@@ -118,18 +129,26 @@ router.post("/orders", orderRateLimit, async (req, res): Promise<void> => {
       });
       const shippingCost = shipping.finalCost;
       const total = Math.max(0, subtotal - couponDiscount + shippingCost);
+      const isManualPayment = input.paymentMethod === "manual_transfer";
+      const requiredPaymentAmount = isManualPayment ? calculateRequiredPayment(total, input.paymentPlan!) : null;
       const [createdOrder] = await tx.insert(ordersTable).values({
         orderNumber, checkoutToken: checkoutToken || null, customerId, customerName, mobile, primaryPhoneHasWhatsApp: input.primaryPhoneHasWhatsApp, altMobile: altMobile || null, alternatePhoneHasWhatsApp: input.alternatePhoneHasWhatsApp, preferredWhatsAppPhone,
         governorateId: gov.id, governorateName: gov.nameAr,
         city, detailedAddress, landmark: landmark || null,
         deliveryNotes: deliveryNotes || null, orderNotes: orderNotes || null,
-        paymentMethod: "cash_on_delivery", paymentStatus: "cash_on_delivery",
+        paymentMethod: input.paymentMethod,
+        paymentStatus: isManualPayment ? "awaiting_transfer" : "cash_on_delivery",
+        paymentPlan: isManualPayment ? input.paymentPlan : null,
+        transferMethod: isManualPayment ? input.transferMethod : null,
+        requiredPaymentAmount: requiredPaymentAmount == null ? null : String(requiredPaymentAmount),
+        paidAmount: "0",
+        remainingAmount: isManualPayment ? String(Math.max(0, total - (requiredPaymentAmount ?? 0))) : null,
         subtotal: String(subtotal), discount: "0", couponDiscount: String(couponDiscount),
         couponCode: couponCode || null, shippingCost: String(shippingCost),
         shippingBaseCost: String(shipping.baseCost), shippingSurcharge: String(shipping.surcharge),
         shippingDiscount: String(shipping.discount), freeShippingReason: shipping.freeShippingReason,
         shippingRuleSnapshot: { rule: shipping.rule, governorateId: gov.id, governorateName: gov.nameAr, city, cityId: matchedCity?.id ?? null, baseCost: shipping.baseCost, surcharge: shipping.surcharge, discount: shipping.discount, finalCost: shipping.finalCost, minDeliveryDays: matchedCity?.minDeliveryDays ?? gov.minDeliveryDays, maxDeliveryDays: matchedCity?.maxDeliveryDays ?? gov.maxDeliveryDays, calculatedAt: new Date().toISOString() },
-        total: String(total), status: "new",
+        total: String(total), status: isManualPayment ? "awaiting_confirmation" : "new",
       }).returning();
 
       for (const { product, quantity } of resolvedItems) {
@@ -150,7 +169,7 @@ router.post("/orders", orderRateLimit, async (req, res): Promise<void> => {
           reason: `حجز للطلب ${createdOrder.orderNumber}`, orderId: createdOrder.id,
         });
       }
-      await tx.insert(orderStatusHistoryTable).values({ orderId: createdOrder.id, status: "new", notes: "تم إنشاء الطلب" });
+      await tx.insert(orderStatusHistoryTable).values({ orderId: createdOrder.id, status: createdOrder.status, notes: isManualPayment ? "تم إنشاء الطلب — بانتظار تسجيل التحويل" : "تم إنشاء الطلب" });
       if (coupon) await recordCouponUsage(tx, coupon, createdOrder.id, customerId);
       return createdOrder;
     }));
@@ -222,7 +241,9 @@ router.get("/orders/track", async (req, res): Promise<void> => {
 
   res.json({
     orderNumber: order.orderNumber, status: order.status,
-    paymentMethod: order.paymentMethod,
+    paymentMethod: order.paymentMethod, paymentStatus: order.paymentStatus,
+    paymentPlan: order.paymentPlan, transferMethod: order.transferMethod,
+    paidAmount: Number(order.paidAmount), remainingAmount: order.remainingAmount == null ? null : Number(order.remainingAmount),
     estimatedDeliveryDate: order.estimatedDeliveryDate,
     trackingNumber: order.trackingNumber, shippingCompany: order.shippingCompany,
     statusHistory: history.map(h => ({ status: h.status, notes: h.notes, createdAt: h.createdAt })),

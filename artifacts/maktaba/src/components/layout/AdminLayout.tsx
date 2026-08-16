@@ -12,12 +12,15 @@ import {
   X,
   FileText,
   Star,
+  WalletCards,
   PanelRightClose,
   PanelRightOpen
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { getGetSiteSettingsQueryKey, useGetSiteSettings } from "@workspace/api-client-react";
+import { useQuery } from "@tanstack/react-query";
+import { adminApi } from "@/lib/admin-api";
 
 export function AdminLayout({ children, requiredPermission }: { children: ReactNode; requiredPermission?: string }) {
   const [location, setLocation] = useLocation();
@@ -25,6 +28,13 @@ export function AdminLayout({ children, requiredPermission }: { children: ReactN
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { data: settings } = useGetSiteSettings({ query: { queryKey: getGetSiteSettingsQueryKey(), staleTime: 60_000 } });
+  const can = (permission: string) => admin?.role === "owner" || admin?.role === "administrator" || admin?.permissions?.includes(permission) || (permission === "content.view" && (admin?.permissions?.includes("content.manage") || admin?.permissions?.includes("branding.manage")));
+  const { data: paymentQueue } = useQuery({
+    queryKey: ["admin-payment-pending-count"],
+    queryFn: () => adminApi<{ count: number }>("/api/admin/payments/pending-count"),
+    enabled: Boolean(admin && can("payments.view")),
+    refetchInterval: 30_000,
+  });
   const adminLogo = settings?.adminLogoUrl || settings?.mainLogoUrl || settings?.logoUrl;
 
   useEffect(() => {
@@ -35,12 +45,12 @@ export function AdminLayout({ children, requiredPermission }: { children: ReactN
     return <div className="min-h-screen grid place-items-center" dir="rtl">جاري التحقق من صلاحية الدخول...</div>;
   }
 
-  const can = (permission: string) => admin.role === "owner" || admin.role === "administrator" || admin.permissions?.includes(permission) || (permission === "content.view" && (admin.permissions?.includes("content.manage") || admin.permissions?.includes("branding.manage")));
   const navigation = [
     { name: "لوحة التحكم", href: "/admin", icon: LayoutDashboard, permission: "dashboard.view" },
     { name: "المنتجات", href: "/admin/products", icon: Package, permission: "products.view" },
     { name: "تقييمات المنتجات", href: "/admin/reviews", icon: Star, permission: "products.view" },
     { name: "الطلبات", href: "/admin/orders", icon: ShoppingCart, permission: "orders.view" },
+    { name: "مراجعة المدفوعات", href: "/admin/payments", icon: WalletCards, permission: "payments.view" },
     { name: "العملاء", href: "/admin/customers", icon: Users, permission: "customers.view" },
     { name: "المخزون", href: "/admin/inventory", icon: Package, permission: "inventory.view" },
     { name: "الكوبونات", href: "/admin/coupons", icon: Tags, permission: "coupons.view" },
@@ -94,7 +104,7 @@ export function AdminLayout({ children, requiredPermission }: { children: ReactN
                   }`}
                 >
                   <item.icon className="h-5 w-5" />
-                  {!isCollapsed && item.name}
+                  {!isCollapsed && <><span>{item.name}</span>{item.href === "/admin/payments" && Boolean(paymentQueue?.count) && <span className="mr-auto rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-black text-slate-950" aria-label={`${paymentQueue!.count} مدفوعات تنتظر المراجعة`}>{paymentQueue!.count}</span>}</>}
                 </Link>
               );
             })}

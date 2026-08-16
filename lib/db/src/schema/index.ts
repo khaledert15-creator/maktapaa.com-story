@@ -5,6 +5,7 @@ export * from "./governorates";
 export * from "./products";
 export * from "./inventory";
 export * from "./orders";
+export * from "./payments";
 export * from "./coupons";
 export * from "./content";
 export * from "./reviews";

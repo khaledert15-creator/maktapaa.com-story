@@ -502,7 +502,30 @@ export type OrderInputPaymentMethod = typeof OrderInputPaymentMethod[keyof typeo
 
 
 export const OrderInputPaymentMethod = {
+  manual_transfer: 'manual_transfer',
   cash_on_delivery: 'cash_on_delivery',
+} as const;
+
+/**
+ * @nullable
+ */
+export type OrderInputPaymentPlan = typeof OrderInputPaymentPlan[keyof typeof OrderInputPaymentPlan] | null;
+
+
+export const OrderInputPaymentPlan = {
+  deposit_100: 'deposit_100',
+  full: 'full',
+} as const;
+
+/**
+ * @nullable
+ */
+export type OrderInputTransferMethod = typeof OrderInputTransferMethod[keyof typeof OrderInputTransferMethod] | null;
+
+
+export const OrderInputTransferMethod = {
+  instapay: 'instapay',
+  mobile_wallet: 'mobile_wallet',
 } as const;
 
 export interface OrderInput {
@@ -524,6 +547,10 @@ export interface OrderInput {
   /** @nullable */
   orderNotes?: string | null;
   paymentMethod: OrderInputPaymentMethod;
+  /** @nullable */
+  paymentPlan?: OrderInputPaymentPlan;
+  /** @nullable */
+  transferMethod?: OrderInputTransferMethod;
   /** @nullable */
   couponCode?: string | null;
   /**
@@ -563,6 +590,15 @@ export interface Order {
   status: string;
   paymentStatus: string;
   paymentMethod?: string;
+  /** @nullable */
+  paymentPlan?: string | null;
+  /** @nullable */
+  transferMethod?: string | null;
+  /** @nullable */
+  requiredPaymentAmount?: number | null;
+  paidAmount?: number;
+  /** @nullable */
+  remainingAmount?: number | null;
   customerName?: string;
   mobile?: string;
   primaryPhone?: string;
@@ -619,6 +655,14 @@ export interface OrderTracking {
   orderNumber: string;
   status: string;
   paymentMethod?: string;
+  paymentStatus?: string;
+  /** @nullable */
+  paymentPlan?: string | null;
+  /** @nullable */
+  transferMethod?: string | null;
+  paidAmount?: number;
+  /** @nullable */
+  remainingAmount?: number | null;
   /** @nullable */
   estimatedDeliveryDate?: string | null;
   /** @nullable */
@@ -1120,6 +1164,13 @@ export interface AdminOrderSummary {
   status: string;
   paymentStatus?: string;
   paymentMethod?: string;
+  /** @nullable */
+  paymentPlan?: string | null;
+  /** @nullable */
+  transferMethod?: string | null;
+  paidAmount?: number;
+  /** @nullable */
+  remainingAmount?: number | null;
   total: number;
   itemCount?: number;
   createdAt: string;
@@ -1131,6 +1182,15 @@ export interface AdminOrder {
   status: string;
   paymentStatus: string;
   paymentMethod?: string;
+  /** @nullable */
+  paymentPlan?: string | null;
+  /** @nullable */
+  transferMethod?: string | null;
+  /** @nullable */
+  requiredPaymentAmount?: number | null;
+  paidAmount?: number;
+  /** @nullable */
+  remainingAmount?: number | null;
   customerName?: string;
   mobile?: string;
   /** @nullable */
@@ -1283,6 +1343,7 @@ export interface DashboardSummary {
   outOfStockCount?: number;
   avgOrderValue?: number;
   totalCustomers?: number;
+  pendingPaymentCount?: number;
 }
 
 export interface SalesDataPoint {

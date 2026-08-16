@@ -19,12 +19,16 @@ import {
   PackageX, 
   TrendingUp, 
   AlertTriangle,
-  ArrowUpRight
+  ArrowUpRight,
+  WalletCards
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function AdminDashboard() {
+  const { admin } = useAuth();
   const [chartPeriod, setChartPeriod] = useState<"7d" | "30d" | "90d" | "365d">("7d");
+  const canViewPayments = admin?.role === "owner" || admin?.role === "administrator" || admin?.permissions?.includes("payments.view");
   
   const { data: summary, isLoading: isLoadingSummary } = useGetAdminDashboardSummary();
   const { data: chartData, isLoading: isLoadingChart } = useGetAdminSalesChart({ period: chartPeriod });
@@ -64,7 +68,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <Card className="hover-elevate">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">مبيعات اليوم</CardTitle>
@@ -119,6 +123,16 @@ export default function AdminDashboard() {
             <p className="text-xs text-muted-foreground mt-1">منتجات انتهت كميتها</p>
           </CardContent>
         </Card>
+        {canViewPayments && <Card className="border-amber-200 bg-amber-50/70 hover-elevate">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">مدفوعات تنتظر المراجعة</CardTitle>
+            <WalletCards className="h-4 w-4 text-amber-700" />
+          </CardHeader>
+          <CardContent>
+            {isLoadingSummary ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold text-amber-800">{summary?.pendingPaymentCount || 0}</div>}
+            <Button variant="link" className="mt-1 h-auto p-0 text-xs text-amber-900" asChild><Link href="/admin/payments">افتح المراجعة الآن</Link></Button>
+          </CardContent>
+        </Card>}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
