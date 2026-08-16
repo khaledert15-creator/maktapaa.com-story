@@ -262,6 +262,11 @@
 }
 
 @layer base {
+  html, body, #root {
+    max-width: 100%;
+    min-height: 100%;
+  }
+
   * {
     @apply border-border;
   }
@@ -269,6 +274,14 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
     direction: rtl;
+    overflow-x: hidden;
+    overflow-x: clip;
+  }
+
+  @media (max-width: 640px) {
+    input, select, textarea {
+      font-size: 16px;
+    }
   }
 }
 

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, customersTable, ordersTable } from "@workspace/db";
-import { eq, ilike, inArray, sql } from "drizzle-orm";
+import { desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { requireAdminAuth, requireAdminPermission } from "../../lib/auth";
 import { parseBody } from "../../lib/validation";
 import { egyptianPhoneSchema, optionalEgyptianPhoneSchema, resolvePreferredWhatsAppPhone, z } from "@workspace/api-zod";
@@ -11,14 +11,20 @@ router.use(requireAdminAuth);
 
 router.get("/admin/customers", requireAdminPermission("customers.view"), async (req, res): Promise<void> => {
   const { page = "1", limit = "20", q } = req.query as Record<string, string>;
-  const pageNum = parseInt(page, 10);
-  const limitNum = parseInt(limit, 10);
+  const pageNum = Math.max(1, parseInt(page, 10) || 1);
+  const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
   const offset = (pageNum - 1) * limitNum;
 
-  const where = q ? ilike(customersTable.name, `%${q}%`) : undefined;
+  const search = q?.trim();
+  const where = search ? or(
+    ilike(customersTable.name, `%${search}%`),
+    ilike(customersTable.email, `%${search}%`),
+    ilike(customersTable.primaryPhone, `%${search}%`),
+    ilike(customersTable.alternatePhone, `%${search}%`),
+  ) : undefined;
 
   const [customers, [{ count }]] = await Promise.all([
-    db.select().from(customersTable).where(where).limit(limitNum).offset(offset),
+    db.select().from(customersTable).where(where).orderBy(desc(customersTable.createdAt)).limit(limitNum).offset(offset),
     db.select({ count: sql<number>`count(*)::int` }).from(customersTable).where(where),
   ]);
 
@@ -58,14 +64,20 @@ router.get("/admin/customers/:id", requireAdminPermission("customers.view"), asy
     totalSpend: sql<number>`coalesce(sum(total::numeric), 0)`,
     avgOrderValue: sql<number>`coalesce(avg(total::numeric), 0)`,
   }).from(ordersTable).where(eq(ordersTable.customerId, id));
-  const [lastOrder] = await db.select({ createdAt: ordersTable.createdAt }).from(ordersTable)
-    .where(eq(ordersTable.customerId, id)).orderBy(sql`created_at desc`).limit(1);
+  const recentOrders = await db.select({
+    id: ordersTable.id,
+    orderNumber: ordersTable.orderNumber,
+    status: ordersTable.status,
+    total: ordersTable.total,
+    createdAt: ordersTable.createdAt,
+  }).from(ordersTable).where(eq(ordersTable.customerId, id)).orderBy(desc(ordersTable.createdAt)).limit(20);
 
   res.json({
     id: c.id, name: c.name, email: c.email, mobile: c.primaryPhone, primaryPhone: c.primaryPhone, primaryPhoneHasWhatsApp: c.primaryPhoneHasWhatsApp, alternatePhone: c.alternatePhone, alternatePhoneHasWhatsApp: c.alternatePhoneHasWhatsApp, preferredWhatsAppPhone: c.preferredWhatsAppPhone, isBlocked: c.isBlocked,
     totalOrders: stats.totalOrders, totalSpend: Number(stats.totalSpend),
     avgOrderValue: Number(stats.avgOrderValue),
-    lastOrderDate: lastOrder?.createdAt || null, internalNotes: c.internalNotes, createdAt: c.createdAt,
+    lastOrderDate: recentOrders[0]?.createdAt || null, internalNotes: c.internalNotes, createdAt: c.createdAt,
+    recentOrders: recentOrders.map(order => ({ ...order, total: Number(order.total) })),
   });
 });
 

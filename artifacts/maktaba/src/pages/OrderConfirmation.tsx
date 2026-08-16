@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link, useParams } from "wouter";
 import { CheckCircle2, Package, Truck, Wallet } from "lucide-react";
 import { getGetOrderConfirmationQueryKey, useGetOrderConfirmation } from "@workspace/api-client-react";
@@ -6,10 +7,18 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { OrderTimeline, orderStatusLabels } from "@/components/storefront/OrderTimeline";
 import { Seo } from "@/components/storefront/Seo";
+import { isAnalyticsEnabled, trackCommerceEvent } from "@/lib/analytics";
 
 export default function OrderConfirmation() {
   const { orderNumber } = useParams<{ orderNumber: string }>();
   const { data: order, isLoading, isError } = useGetOrderConfirmation(orderNumber, { query: { queryKey: getGetOrderConfirmationQueryKey(orderNumber), retry: false } });
+  useEffect(() => {
+    if (!order || !isAnalyticsEnabled()) return;
+    const key = `maktaba_purchase_tracked_${order.orderNumber}`;
+    try { if (sessionStorage.getItem(key)) return; } catch { /* Analytics must never block order confirmation. */ }
+    trackCommerceEvent("Purchase", { orderNumber: order.orderNumber, value: order.total, items: order.items.map(item => ({ id: item.productId || item.nameAr, name: item.nameAr, price: item.unitPrice, quantity: item.quantity })) });
+    try { sessionStorage.setItem(key, "1"); } catch { /* Private storage restrictions are non-fatal. */ }
+  }, [order]);
   if (isLoading) return <div className="container mx-auto max-w-3xl space-y-5 px-4 py-16"><Skeleton className="mx-auto h-24 w-24 rounded-full" /><Skeleton className="mx-auto h-12 w-96 max-w-full" /><Skeleton className="h-96 rounded-3xl" /></div>;
   if (isError || !order) return <div className="container mx-auto px-4 py-24 text-center"><Package className="mx-auto mb-4 h-16 w-16 text-muted-foreground/30" /><h1 className="text-2xl font-black">تعذر فتح تفاصيل هذا الطلب</h1><p className="mt-2 text-muted-foreground">تفاصيل طلب الضيف متاحة من نفس المتصفح الذي أنشأ الطلب.</p><Button className="mt-6" asChild><Link href="/track">تتبع الطلب برقم الهاتف</Link></Button></div>;
   return <div className="container mx-auto max-w-4xl px-4 py-12 sm:py-16"><Seo title={`تم استلام الطلب ${order.orderNumber} | مكتبة دوت كوم`} description="تأكيد طلبك وتفاصيل الشحن والدفع." /><div className="text-center"><div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-emerald-100 text-emerald-600"><CheckCircle2 className="h-14 w-14" /></div><h1 className="mt-6 text-3xl font-black sm:text-4xl">تم استلام طلبك بنجاح</h1><p className="mx-auto mt-3 max-w-xl text-muted-foreground">سيراجع فريق مكتبة دوت كوم الطلب ويتواصل معك عند الحاجة. الدفع نقدًا عند الاستلام.</p></div>

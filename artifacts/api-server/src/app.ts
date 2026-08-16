@@ -60,7 +60,9 @@ app.use((_req, res, next) => {
   res.setHeader("X-Frame-Options", "DENY");
   if (isProduction) {
     res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
-    res.setHeader("Content-Security-Policy", "default-src 'self'; img-src 'self' data: https:; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.sentry.io; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+    const analyticsScripts = config.analyticsEnabled ? " https://www.googletagmanager.com https://connect.facebook.net https://analytics.tiktok.com" : "";
+    const analyticsConnections = config.analyticsEnabled ? " https://www.google-analytics.com https://analytics.google.com https://www.facebook.com https://analytics.tiktok.com" : "";
+    res.setHeader("Content-Security-Policy", `default-src 'self'; img-src 'self' data: https:; script-src 'self'${analyticsScripts}; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.sentry.io${analyticsConnections}; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`);
   }
   next();
 });

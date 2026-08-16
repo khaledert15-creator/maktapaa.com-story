@@ -11,6 +11,7 @@ import {
   Menu,
   X,
   FileText,
+  Star,
   PanelRightClose,
   PanelRightOpen
 } from "lucide-react";
@@ -38,6 +39,7 @@ export function AdminLayout({ children, requiredPermission }: { children: ReactN
   const navigation = [
     { name: "لوحة التحكم", href: "/admin", icon: LayoutDashboard, permission: "dashboard.view" },
     { name: "المنتجات", href: "/admin/products", icon: Package, permission: "products.view" },
+    { name: "تقييمات المنتجات", href: "/admin/reviews", icon: Star, permission: "products.view" },
     { name: "الطلبات", href: "/admin/orders", icon: ShoppingCart, permission: "orders.view" },
     { name: "العملاء", href: "/admin/customers", icon: Users, permission: "customers.view" },
     { name: "المخزون", href: "/admin/inventory", icon: Package, permission: "inventory.view" },

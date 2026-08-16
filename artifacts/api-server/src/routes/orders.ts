@@ -8,6 +8,7 @@ import { parseBody } from "../lib/validation";
 import { egyptianPhoneSchema, optionalEgyptianPhoneSchema, resolvePreferredWhatsAppPhone, z } from "@workspace/api-zod";
 import { rateLimit } from "../lib/rate-limit";
 import { writeAuditLog } from "../services/audit";
+import { isPostgresUniqueViolation, withUniqueOrderNumber } from "../services/order-number";
 
 const router: IRouter = Router();
 const orderRateLimit = rateLimit({ namespace: "order-create", windowMs: 15 * 60_000, max: 20 });
@@ -15,15 +16,6 @@ const orderCreateSchema = z.object({ customerName: z.string().trim().min(2).max(
 const cancellationRequestSchema = z.object({ reason: z.string().trim().min(5).max(500) });
 const profileSchema = z.object({ name: z.string().trim().min(2).max(200).optional(), email: z.string().email().max(200).nullable().optional(), mobile: egyptianPhoneSchema.optional(), primaryPhone: egyptianPhoneSchema.optional(), primaryPhoneHasWhatsApp: z.boolean().optional(), alternatePhone: optionalEgyptianPhoneSchema, alternatePhoneHasWhatsApp: z.boolean().optional(), preferredWhatsAppPhone: optionalEgyptianPhoneSchema });
 const addressSchema = z.object({ governorateId: z.coerce.number().int().positive(), city: z.string().trim().min(2).max(200), detailedAddress: z.string().trim().min(5).max(2000), landmark: z.string().trim().max(500).nullable().optional(), primaryPhone: egyptianPhoneSchema.optional(), primaryPhoneHasWhatsApp: z.boolean().optional(), alternatePhone: optionalEgyptianPhoneSchema, alternatePhoneHasWhatsApp: z.boolean().optional(), preferredWhatsAppPhone: optionalEgyptianPhoneSchema, isDefault: z.boolean().optional() });
-
-function generateOrderNumber(): string {
-  const date = new Date();
-  const y = date.getFullYear().toString().slice(-2);
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  const rand = Math.floor(Math.random() * 90000) + 10000;
-  return `MK${y}${m}${d}-${rand}`;
-}
 
 function mapOrder(order: typeof ordersTable.$inferSelect, items: typeof orderItemsTable.$inferSelect[], history: typeof orderStatusHistoryTable.$inferSelect[]) {
   return {
@@ -110,14 +102,12 @@ router.post("/orders", orderRateLimit, async (req, res): Promise<void> => {
   }
 
   const [matchedCity] = await db.select().from(citiesTable).where(and(eq(citiesTable.governorateId, gov.id), eq(citiesTable.nameAr, city), eq(citiesTable.isActive, true)));
-  const orderNumber = generateOrderNumber();
-
-  
   const customerId = req.session.customerId ? (req.session.customerId as number) : null;
 
   let order: typeof ordersTable.$inferSelect;
+  let duplicateSubmission = false;
   try {
-    order = await db.transaction(async (tx) => {
+    order = await withUniqueOrderNumber(orderNumber => db.transaction(async (tx) => {
       const coupon = couponCode ? await validateCoupon(couponCode, { subtotal, customerId, items: resolvedItems.map(({ product, quantity }) => ({ productId: product.id, categoryId: product.categoryId, quantity, unitPrice: Number(product.price) })) }, { executor: tx, lock: true }) : null;
       const couponDiscount = coupon?.discount ?? 0;
       const shipping = calculateShipping({
@@ -163,14 +153,24 @@ router.post("/orders", orderRateLimit, async (req, res): Promise<void> => {
       await tx.insert(orderStatusHistoryTable).values({ orderId: createdOrder.id, status: "new", notes: "تم إنشاء الطلب" });
       if (coupon) await recordCouponUsage(tx, coupon, createdOrder.id, customerId);
       return createdOrder;
-    });
+    }));
   } catch (error) {
     if (error instanceof Error && error.message.startsWith("OUT_OF_STOCK:")) {
       res.status(409).json({ error: `الكمية المطلوبة لم تعد متاحة للمنتج: ${error.message.slice(13)}` });
       return;
     }
     if (error instanceof CouponValidationError) { res.status(400).json({ error: error.message, code: error.code }); return; }
-    throw error;
+    if (checkoutToken && isPostgresUniqueViolation(error, "orders_checkout_token_unique")) {
+      const [existingOrder] = await db.select().from(ordersTable).where(eq(ordersTable.checkoutToken, checkoutToken));
+      if (existingOrder) {
+        order = existingOrder;
+        duplicateSubmission = true;
+      } else {
+        throw error;
+      }
+    } else {
+      throw error;
+    }
   }
 
   // Clear cart only after the transaction completed successfully and keep the
@@ -183,7 +183,7 @@ router.post("/orders", orderRateLimit, async (req, res): Promise<void> => {
     db.select().from(orderStatusHistoryTable).where(eq(orderStatusHistoryTable.orderId, order.id)),
   ]);
 
-  res.status(201).json(mapOrder(order, items, history));
+  res.status(duplicateSubmission ? 200 : 201).json(mapOrder(order, items, history));
 });
 
 // Guest customers can only reopen the order just created in the same signed

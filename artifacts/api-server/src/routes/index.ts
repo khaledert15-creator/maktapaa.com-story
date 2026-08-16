@@ -14,6 +14,7 @@ import adminCouponsRouter from "./admin/coupons";
 import adminReportsRouter from "./admin/reports";
 import adminShippingRouter from "./admin/shipping";
 import adminManagementRouter from "./admin/management";
+import adminReviewsRouter from "./admin/reviews";
 import adminClassificationsRouter from "./admin/classifications";
 import websiteChatRouter from "./website-chat";
 
@@ -36,5 +37,6 @@ router.use(adminCouponsRouter);
 router.use(adminReportsRouter);
 router.use(adminShippingRouter);
 router.use(adminManagementRouter);
+router.use(adminReviewsRouter);
 
 export default router;

@@ -8,6 +8,7 @@ declare module "express-session" {
     adminId?: number;
     adminRole?: string;
     adminPermissions?: string[];
+    adminLastActivityAt?: number;
     websiteChatGuestId?: string;
     cart?: {
       items: { productId: number; quantity: number }[];

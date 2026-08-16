@@ -65,7 +65,7 @@ export default function WebsiteChatWidget() {
   return (
     <div dir="rtl" className="fixed bottom-[5.25rem] left-3 z-[70] md:bottom-6 md:left-6">
       {chat.isOpen && (
-        <div ref={panelRef} role="dialog" aria-modal="false" aria-label="دردشة مكتبة دوت كوم" className="fixed inset-x-2 bottom-[5.1rem] top-3 flex flex-col overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,.24)] sm:inset-auto sm:bottom-[5.4rem] sm:left-5 sm:top-auto sm:h-[min(680px,calc(100vh-8rem))] sm:w-[390px]">
+        <div ref={panelRef} role="dialog" aria-modal="false" aria-label="دردشة مكتبة دوت كوم" className="fixed inset-x-2 bottom-[calc(5.1rem+env(safe-area-inset-bottom))] top-[max(.75rem,env(safe-area-inset-top))] flex flex-col overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,.24)] sm:inset-auto sm:bottom-[5.4rem] sm:left-5 sm:top-auto sm:h-[min(680px,calc(100dvh-8rem))] sm:w-[390px]">
           <header className="relative overflow-hidden bg-slate-950 px-5 pb-5 pt-4 text-white">
             <div className="absolute -left-8 -top-10 h-32 w-32 rounded-full bg-sky-500/30 blur-2xl" />
             <div className="relative flex items-start justify-between gap-4">

@@ -30,14 +30,15 @@ const AdminProducts = lazy(() => import("@/pages/AdminProducts"));
 const AdminProductForm = lazy(() => import("@/pages/Stubs").then(module => ({ default: module.AdminProductForm })));
 const AdminOrders = lazy(() => import("@/pages/AdminOrders").then(module => ({ default: module.AdminOrders })));
 const AdminOrderDetail = lazy(() => import("@/pages/AdminOrders").then(module => ({ default: module.AdminOrderDetail })));
-const AdminCustomers = lazy(() => import("@/pages/AdminSections").then(module => ({ default: module.AdminCustomers })));
+const AdminCustomers = lazy(() => import("@/pages/AdminCustomers"));
 const AdminInventory = lazy(() => import("@/pages/AdminSections").then(module => ({ default: module.AdminInventory })));
 const AdminCoupons = lazy(() => import("@/pages/AdminOperations").then(module => ({ default: module.AdminCoupons })));
 const AdminShipping = lazy(() => import("@/pages/AdminOperations").then(module => ({ default: module.AdminShipping })));
 const AdminClassifications = lazy(() => import("@/pages/AdminOperations").then(module => ({ default: module.AdminClassifications })));
 const AdminContent = lazy(() => import("@/pages/AdminContent"));
-const AdminReports = lazy(() => import("@/pages/AdminSections").then(module => ({ default: module.AdminReports })));
-const AdminEmployees = lazy(() => import("@/pages/AdminSections").then(module => ({ default: module.AdminEmployees })));
+const AdminReports = lazy(() => import("@/pages/AdminReports"));
+const AdminEmployees = lazy(() => import("@/pages/AdminEmployees"));
+const AdminReviews = lazy(() => import("@/pages/AdminReviews"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
 export function AppRouter() {
@@ -100,6 +101,7 @@ export function AppRouter() {
       <Route path="/admin/content">{() => <AdminLayout requiredPermission="content.view"><AdminContent /></AdminLayout>}</Route>
       <Route path="/admin/reports">{() => <AdminLayout requiredPermission="reports.view"><AdminReports /></AdminLayout>}</Route>
       <Route path="/admin/employees">{() => <AdminLayout requiredPermission="employees.manage"><AdminEmployees /></AdminLayout>}</Route>
+      <Route path="/admin/reviews">{() => <AdminLayout requiredPermission="products.view"><AdminReviews /></AdminLayout>}</Route>
       <Route path="/admin/:rest*">
         {() => (
           <AdminLayout>

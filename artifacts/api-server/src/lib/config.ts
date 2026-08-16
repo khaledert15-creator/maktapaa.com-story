@@ -36,6 +36,8 @@ const environmentSchema = z.object({
   BUILD_VERSION: z.string().max(100).default("development"),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
   SLOW_REQUEST_MS: positiveInteger(1_000),
+  ADMIN_IDLE_TIMEOUT_MS: positiveInteger(4 * 60 * 60_000),
+  ANALYTICS_ENABLED: z.enum(["true", "false"]).default("false"),
   WEBSITE_CHAT_ENABLED: z.enum(["true", "false"]).default("false"),
   WEBSITE_CHAT_ENCRYPTION_KEY: z.string().optional(),
   WEBSITE_CHAT_ATTACHMENT_MAX_BYTES: positiveInteger(5 * 1024 * 1024),
@@ -135,6 +137,7 @@ export const config = {
   allowLocalStorageInProduction: parsed.data.ALLOW_LOCAL_STORAGE_IN_PRODUCTION === "true",
   s3ForcePathStyle: parsed.data.S3_FORCE_PATH_STYLE === "true",
   websiteChatEnabled: parsed.data.WEBSITE_CHAT_ENABLED === "true",
+  analyticsEnabled: parsed.data.ANALYTICS_ENABLED === "true",
 };
 
 export type RuntimeConfig = typeof config;

@@ -14,6 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { type ProductNotice, useProductNotice } from "@/components/storefront/ProductNoticeModal";
 import { useWebsiteChat } from "@/contexts/WebsiteChatContext";
+import { trackCommerceEvent } from "@/lib/analytics";
 
 export default function ProductDetail() {
   const { slug } = useParams<{ slug: string }>();
@@ -40,6 +41,7 @@ export default function ProductDetail() {
   const websiteChat = useWebsiteChat();
 
   useEffect(() => { if (product) setSelectedImage(product.images[0] || product.coverImage || null); }, [product]);
+  useEffect(() => { if (product) trackCommerceEvent("ViewContent", { contentId: product.id, contentName: product.nameAr, value: product.price }); }, [product?.id]);
   useEffect(() => {
     if (!product) return;
     websiteChat.setPageContext({ path: `/product/${product.slug}`, type: "product", productId: product.id });
@@ -56,7 +58,7 @@ export default function ProductDetail() {
 
   const performAdd = async (buyNow = false) => {
     if (!product) return;
-    try { await addToCart.mutateAsync({ data: { productId: product.id, quantity } }); toast({ title: "تمت الإضافة إلى السلة" }); if (buyNow) setLocation("/checkout"); }
+    try { await addToCart.mutateAsync({ data: { productId: product.id, quantity } }); trackCommerceEvent("AddToCart", { contentId: product.id, contentName: product.nameAr, value: product.price * quantity, quantity }); toast({ title: "تمت الإضافة إلى السلة" }); if (buyNow) setLocation("/checkout"); }
     catch { toast({ title: "تعذر إضافة المنتج", variant: "destructive" }); }
   };
   const add = (buyNow = false) => notice.request(buyNow ? "buy_now" : "add_to_cart", () => void performAdd(buyNow));

@@ -82,8 +82,9 @@ test("warehouse employee is denied employees, permissions, coupons, content, rep
     request("/api/admin/content/branding", cookie),
     request("/api/admin/reports/inventory", cookie),
     request("/api/admin/audit-logs", cookie),
+    request("/api/admin/reviews/999999", cookie, { method: "PATCH", body: JSON.stringify({ moderationStatus: "approved" }) }),
   ]);
-  assert.deepEqual(protectedRequests.map(response => response.status), Array(13).fill(403));
+  assert.deepEqual(protectedRequests.map(response => response.status), Array(14).fill(403));
 
   const suffix = randomUUID();
   const [product] = await db.insert(productsTable).values({ nameAr: `مخزون أمني ${suffix}`, slug: `security-stock-${suffix}`, price: "10", stockQuantity: 2, status: "active" }).returning();
@@ -231,6 +232,8 @@ test("content manager edits announcement and scheduled hero slides with immediat
 test("writable HTTP endpoints reject invalid discounts, negative product values and invalid reviews", async () => {
   const { user, password } = await createAdmin("administrator", []);
   const cookie = await login(user.email, password);
+  const ownerEscalation = await request("/api/admin/employees", cookie, { method: "POST", body: JSON.stringify({ name: "مالك غير مسموح", email: `owner-${randomUUID()}@example.test`, password: "Very-secure-password", role: "owner", permissions: [] }) });
+  assert.equal(ownerEscalation.status, 403);
   const badCoupon = await request("/api/admin/coupons", cookie, { method: "POST", body: JSON.stringify({ code: `BAD-${randomUUID()}`, type: "percentage", value: 101 }) });
   assert.equal(badCoupon.status, 400);
   const negativePrice = await request("/api/admin/products", cookie, { method: "POST", body: JSON.stringify({ nameAr: "سعر سالب", price: -1, stockQuantity: 2 }) });
@@ -249,6 +252,17 @@ test("writable HTTP endpoints reject invalid discounts, negative product values 
   assert.equal(body.moderationStatus, "pending");
   const [stored] = await db.select().from(reviewsTable).where(eq(reviewsTable.id, body.id));
   assert.equal(stored.isApproved, 0);
+
+  const pendingList = await request("/api/admin/reviews?status=pending", cookie);
+  assert.equal(pendingList.status, 200);
+  const pendingBody = await pendingList.json() as { items: { id: number; productName: string }[] };
+  assert.equal(pendingBody.items.find(review => review.id === body.id)?.productName, product.nameAr);
+  const approved = await request(`/api/admin/reviews/${body.id}`, cookie, { method: "PATCH", body: JSON.stringify({ moderationStatus: "approved" }) });
+  assert.equal(approved.status, 200);
+  const [moderated] = await db.select().from(reviewsTable).where(eq(reviewsTable.id, body.id));
+  assert.equal(moderated.moderationStatus, "approved");
+  assert.equal(moderated.isApproved, 1);
+  assert.ok((await db.select().from(auditLogsTable).where(and(eq(auditLogsTable.entityType, "review"), eq(auditLogsTable.entityId, String(body.id))))).length > 0);
 });
 
 test("price changes require the dedicated prices.edit permission", async () => {

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Search as SearchIcon, BookOpen, Clock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import useDebounce from "@/hooks/use-debounce"; // Will create this
+import { trackCommerceEvent } from "@/lib/analytics";
 
 export default function Search() {
   const [, setLocation] = useLocation();
@@ -36,6 +37,7 @@ export default function Search() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim()) {
+      trackCommerceEvent("Search", { searchTerm: query.trim() });
       saveRecentSearch(query);
       setLocation(`/search?q=${encodeURIComponent(query)}`);
       setIsFocused(false);
@@ -43,6 +45,7 @@ export default function Search() {
   };
 
   const handleSuggestionClick = (term: string) => {
+    trackCommerceEvent("Search", { searchTerm: term });
     setQuery(term);
     saveRecentSearch(term);
     setLocation(`/search?q=${encodeURIComponent(term)}`);

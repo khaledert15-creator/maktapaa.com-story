@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BookOpen, Minus, Plus, Trash2, Tag, ShoppingBag, ArrowRight } from "lucide-react";
+import { BookOpen, Minus, Plus, Trash2, Tag, ShoppingBag, ArrowRight, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { trackCommerceEvent } from "@/lib/analytics";
 
 export default function Cart() {
   const [, setLocation] = useLocation();
@@ -64,6 +65,10 @@ export default function Cart() {
   const handleApplyCoupon = () => {
     if (!couponCode.trim()) return;
     applyCouponMutation.mutate({ data: { code: couponCode } });
+  };
+
+  const removeItem = (item: NonNullable<typeof cart>["items"][number]) => {
+    removeItemMutation.mutate({ productId: item.productId }, { onSuccess: () => trackCommerceEvent("RemoveFromCart", { contentId: item.productId, contentName: item.nameAr, value: item.subtotal, quantity: item.quantity }) });
   };
 
   if (isLoading) {
@@ -162,7 +167,7 @@ export default function Cart() {
                         {item.subtotal} ج.م
                       </TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="icon" aria-label={`حذف ${item.nameAr} من السلة`} title="حذف من السلة" className="text-muted-foreground hover:text-destructive" onClick={() => removeItemMutation.mutate({ productId: item.productId })}>
+                        <Button variant="ghost" size="icon" aria-label={`حذف ${item.nameAr} من السلة`} title="حذف من السلة" className="text-muted-foreground hover:text-destructive" onClick={() => removeItem(item)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </TableCell>
@@ -204,7 +209,7 @@ export default function Cart() {
                           <Plus className="h-3 w-3" />
                         </Button>
                       </div>
-                      <Button variant="ghost" size="icon" aria-label={`حذف ${item.nameAr} من السلة`} title="حذف من السلة" className="text-muted-foreground hover:text-destructive h-8 w-8" onClick={() => removeItemMutation.mutate({ productId: item.productId })}>
+                      <Button variant="ghost" size="icon" aria-label={`حذف ${item.nameAr} من السلة`} title="حذف من السلة" className="text-muted-foreground hover:text-destructive h-8 w-8" onClick={() => removeItem(item)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -280,7 +285,7 @@ export default function Cart() {
             </CardContent>
             <CardFooter className="p-6 pt-0">
               <Button size="lg" className="w-full text-lg h-14" asChild>
-                <Link href="/checkout">إتمام الطلب</Link>
+                <Link href="/checkout" onClick={() => trackCommerceEvent("InitiateCheckout", { value: cart.total, items: cart.items.map(item => ({ id: item.productId, name: item.nameAr || "منتج", price: item.unitPrice, quantity: item.quantity })) })}>إتمام الطلب</Link>
               </Button>
             </CardFooter>
           </Card>
@@ -289,6 +294,3 @@ export default function Cart() {
     </div>
   );
 }
-
-// Ensure X is imported for the remove coupon icon
-import { X } from "lucide-react";

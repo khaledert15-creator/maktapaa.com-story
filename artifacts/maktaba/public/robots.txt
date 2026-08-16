@@ -3,3 +3,4 @@ Allow: /
 Disallow: /admin/
 Disallow: /account
 Disallow: /checkout
+Sitemap: https://maktabaa.com/sitemap.xml

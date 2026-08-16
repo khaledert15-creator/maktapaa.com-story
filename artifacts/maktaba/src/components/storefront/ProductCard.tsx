@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { type ProductNotice, useProductNotice } from "@/components/storefront/ProductNoticeModal";
+import { trackCommerceEvent } from "@/lib/analytics";
 
 export function ProductCard({ product, isFavorite = false }: { product: ProductSummary; isFavorite?: boolean }) {
   const responsive = product as ProductSummary & { coverImageSrcSet?: string | null; coverImageWidth?: number | null; coverImageHeight?: number | null };
@@ -23,6 +24,7 @@ export function ProductCard({ product, isFavorite = false }: { product: ProductS
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetCartQueryKey() });
+        trackCommerceEvent("AddToCart", { contentId: product.id, contentName: product.nameAr, value: product.price, quantity: 1 });
         toast({ title: "تمت الإضافة إلى السلة" });
       },
       onError: () => toast({ title: "تعذر إضافة المنتج", variant: "destructive" }),

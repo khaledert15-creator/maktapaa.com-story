@@ -18,9 +18,29 @@ import { useToast } from "@/hooks/use-toast";
 import { Seo } from "@/components/storefront/Seo";
 import { type ProductNotice, useProductNotice } from "@/components/storefront/ProductNoticeModal";
 import { Checkbox } from "@/components/ui/checkbox";
+import { normalizeEgyptianPhone } from "@workspace/api-zod";
+import { trackCommerceEvent } from "@/lib/analytics";
+
+const requiredPhone = z.string().transform((value, context) => {
+  const normalized = normalizeEgyptianPhone(value);
+  if (!normalized) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "رقم موبايل مصري غير صحيح" });
+    return z.NEVER;
+  }
+  return normalized;
+});
+const optionalPhone = z.string().transform((value, context) => {
+  if (!value.trim()) return "";
+  const normalized = normalizeEgyptianPhone(value);
+  if (!normalized) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "رقم موبايل مصري غير صحيح" });
+    return z.NEVER;
+  }
+  return normalized;
+});
 
 const schema = z.object({
-  customerName: z.string().trim().min(2, "اكتب الاسم الكامل"), mobile: z.string().regex(/^01[0125][0-9]{8}$/, "رقم موبايل مصري غير صحيح"), primaryPhoneHasWhatsApp: z.boolean(), altMobile: z.string().regex(/^01[0125][0-9]{8}$/, "رقم موبايل مصري غير صحيح").optional().or(z.literal("")), alternatePhoneHasWhatsApp: z.boolean(), preferredWhatsApp: z.enum(["primary", "alternate", "none"]),
+  customerName: z.string().trim().min(2, "اكتب الاسم الكامل"), mobile: requiredPhone, primaryPhoneHasWhatsApp: z.boolean(), altMobile: optionalPhone, alternatePhoneHasWhatsApp: z.boolean(), preferredWhatsApp: z.enum(["primary", "alternate", "none"]),
   governorateId: z.coerce.number().int().positive("اختر المحافظة"), city: z.string().trim().min(2, "اختر أو اكتب المدينة"), detailedAddress: z.string().trim().min(5, "اكتب العنوان بالتفصيل"), landmark: z.string().optional(), deliveryNotes: z.string().optional(), orderNotes: z.string().optional(), paymentMethod: z.literal("cash_on_delivery"),
 }).superRefine((values, context) => {
   if (values.preferredWhatsApp === "primary" && !values.primaryPhoneHasWhatsApp) context.addIssue({ code: "custom", path: ["preferredWhatsApp"], message: "حدد أن الرقم الأساسي عليه واتساب" });
@@ -51,7 +71,11 @@ export default function Checkout() {
     if (address && !form.getValues("detailedAddress")) {
       if (address.governorateId) form.setValue("governorateId", address.governorateId);
       form.setValue("city", address.city); form.setValue("detailedAddress", address.detailedAddress); form.setValue("landmark", address.landmark || "");
-      if (address.primaryPhone) form.setValue("mobile", address.primaryPhone); form.setValue("primaryPhoneHasWhatsApp", address.primaryPhoneHasWhatsApp ?? true); form.setValue("altMobile", address.alternatePhone || ""); form.setValue("alternatePhoneHasWhatsApp", address.alternatePhoneHasWhatsApp ?? false); form.setValue("preferredWhatsApp", address.preferredWhatsAppPhone === address.alternatePhone ? "alternate" : address.preferredWhatsAppPhone ? "primary" : "none");
+      if (address.primaryPhone) form.setValue("mobile", address.primaryPhone);
+      form.setValue("primaryPhoneHasWhatsApp", address.primaryPhoneHasWhatsApp ?? true);
+      form.setValue("altMobile", address.alternatePhone || "");
+      form.setValue("alternatePhoneHasWhatsApp", address.alternatePhoneHasWhatsApp ?? false);
+      form.setValue("preferredWhatsApp", address.preferredWhatsAppPhone === address.alternatePhone ? "alternate" : address.preferredWhatsAppPhone ? "primary" : "none");
     }
   }, [addresses, form]);
   useEffect(() => {
@@ -61,7 +85,7 @@ export default function Checkout() {
   }, [governorateId, city, cart?.items.length, cart?.couponCode]);
 
   const createOrder = useCreateOrder({ mutation: { onSuccess: order => { queryClient.invalidateQueries({ queryKey: getGetCartQueryKey() }); queryClient.invalidateQueries({ queryKey: getGetMyOrdersQueryKey() }); setLocation(`/order-confirmation/${order.orderNumber}`); }, onError: () => toast({ title: "لم يتم إنشاء الطلب", description: "راجع المخزون وبيانات التوصيل ثم حاول مرة أخرى. لن يتم تكرار الطلب عند إعادة المحاولة.", variant: "destructive" }) } });
-  const submit = (values: CheckoutValues) => { if (!cart?.items.length || !quote.data) { toast({ title: "انتظر اكتمال حساب الشحن", variant: "destructive" }); return; } const { preferredWhatsApp, ...orderValues } = values; checkoutNotice.request("checkout", () => createOrder.mutate({ data: { ...orderValues, altMobile: values.altMobile || null, preferredWhatsAppPhone: preferredWhatsApp === "primary" ? values.mobile : preferredWhatsApp === "alternate" ? values.altMobile || null : null, checkoutToken: checkoutToken.current, couponCode: cart.couponCode || null } })); };
+  const submit = (values: CheckoutValues) => { if (!cart?.items.length || !quote.data) { toast({ title: "انتظر اكتمال حساب الشحن", variant: "destructive" }); return; } const { preferredWhatsApp, ...orderValues } = values; trackCommerceEvent("InitiateCheckout", { value: cart.subtotal - (cart.couponDiscount || 0) + quote.data.finalCost, items: cart.items.map(item => ({ id: item.productId, name: item.nameAr || "منتج", price: item.unitPrice, quantity: item.quantity })) }); checkoutNotice.request("checkout", () => createOrder.mutate({ data: { ...orderValues, altMobile: values.altMobile || null, preferredWhatsAppPhone: preferredWhatsApp === "primary" ? values.mobile : preferredWhatsApp === "alternate" ? values.altMobile || null : null, checkoutToken: checkoutToken.current, couponCode: cart.couponCode || null } })); };
   const applyAddress = (id: number) => { const address = addresses?.find(item => item.id === id); if (!address) return; if (address.governorateId) form.setValue("governorateId", address.governorateId); form.setValue("city", address.city); form.setValue("detailedAddress", address.detailedAddress); form.setValue("landmark", address.landmark || ""); if (address.primaryPhone) form.setValue("mobile", address.primaryPhone); form.setValue("primaryPhoneHasWhatsApp", address.primaryPhoneHasWhatsApp ?? true); form.setValue("altMobile", address.alternatePhone || ""); form.setValue("alternatePhoneHasWhatsApp", address.alternatePhoneHasWhatsApp ?? false); form.setValue("preferredWhatsApp", address.preferredWhatsAppPhone === address.alternatePhone ? "alternate" : address.preferredWhatsAppPhone ? "primary" : "none"); };
 
   if (isLoading) return <div className="container mx-auto grid gap-8 px-4 py-10 lg:grid-cols-3"><Skeleton className="h-[650px] rounded-3xl lg:col-span-2" /><Skeleton className="h-[500px] rounded-3xl" /></div>;

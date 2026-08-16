@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, customersTable, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { hashPassword, verifyPassword } from "../lib/auth";
+import { hashPassword, requireAdminAuth, verifyPassword } from "../lib/auth";
 import type { IRouter } from "express";
 import { egyptianPhoneSchema, optionalEgyptianPhoneSchema, resolvePreferredWhatsAppPhone, z } from "@workspace/api-zod";
 import { parseBody } from "../lib/validation";
@@ -138,6 +138,7 @@ router.post("/auth/admin/login", loginRateLimit, async (req, res): Promise<void>
   req.session.adminId = user.id;
   req.session.adminRole = user.role;
   req.session.adminPermissions = user.permissions;
+  req.session.adminLastActivityAt = Date.now();
   await saveSession(req);
 
   res.json({ user: { id: user.id, name: user.name, email: user.email, role: user.role, permissions: user.permissions } });
@@ -151,12 +152,7 @@ router.post("/auth/admin/logout", async (req, res): Promise<void> => {
 });
 
 // Get current admin
-router.get("/auth/admin/me", async (req, res): Promise<void> => {
-  
-  if (!req.session.adminId) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
+router.get("/auth/admin/me", requireAdminAuth, async (req, res): Promise<void> => {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.session.adminId as number));
   if (!user || !user.isActive) {
     res.status(401).json({ error: "Unauthorized" });

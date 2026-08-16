@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { db, customersTable, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import type { Request, Response, NextFunction } from "express";
+import { config } from "./config";
 
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 12);
@@ -24,17 +25,32 @@ export async function requireAdminAuth(req: Request, res: Response, next: NextFu
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
+  if (isAdminSessionExpired(req.session.adminLastActivityAt)) {
+    clearAdminSession(req);
+    res.status(401).json({ error: "انتهت جلسة الإدارة لعدم النشاط. سجّل الدخول مرة أخرى." });
+    return;
+  }
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.session.adminId));
   if (!user?.isActive) {
-    req.session.adminId = undefined;
-    req.session.adminRole = undefined;
-    req.session.adminPermissions = undefined;
+    clearAdminSession(req);
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
   req.session.adminRole = user.role;
   req.session.adminPermissions = user.permissions;
+  req.session.adminLastActivityAt = Date.now();
   next();
+}
+
+export function isAdminSessionExpired(lastActivityAt: number | undefined, now = Date.now(), timeoutMs = config.ADMIN_IDLE_TIMEOUT_MS): boolean {
+  return typeof lastActivityAt !== "number" || now - lastActivityAt > timeoutMs;
+}
+
+function clearAdminSession(req: Request): void {
+  req.session.adminId = undefined;
+  req.session.adminRole = undefined;
+  req.session.adminPermissions = undefined;
+  req.session.adminLastActivityAt = undefined;
 }
 
 export function requireAdminPermission(permission: string) {

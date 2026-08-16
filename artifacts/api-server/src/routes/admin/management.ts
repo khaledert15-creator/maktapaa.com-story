@@ -105,6 +105,7 @@ router.get("/admin/employees", requireAdminPermission("employees.manage"), async
 router.post("/admin/employees", requireAdminPermission("employees.manage"), async (req, res): Promise<void> => {
   const input = parseBody(employeeCreateSchema, req.body, res); if (!input) return;
   const { name, email, password, role, permissions } = input;
+  if (role === "owner" && req.session.adminRole !== "owner") { res.status(403).json({ error: "المالك فقط يمكنه إنشاء حساب مالك آخر" }); return; }
   const [user] = await db.insert(usersTable).values({ name, email: email.toLowerCase(), passwordHash: await hashPassword(password), role: role || "sales", permissions: Array.isArray(permissions) ? permissions : [] }).returning();
   await writeAuditLog(req, { action: "employee.create", entityType: "employee", entityId: user.id, description: `إضافة الموظف ${user.name}` });
   const { passwordHash: _passwordHash, ...safeUser } = user;
@@ -115,9 +116,11 @@ router.patch("/admin/employees/:id", requireAdminPermission("employees.manage"),
   const input = parseBody(employeeUpdateSchema, req.body, res); if (!input) return;
   const id = Number(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id);
   if (id === req.session.adminId && input.isActive === false) { res.status(400).json({ error: "لا يمكنك تعطيل حسابك الحالي" }); return; }
+  const [before] = await db.select().from(usersTable).where(eq(usersTable.id, id));
+  if (!before) { res.status(404).json({ error: "الموظف غير موجود" }); return; }
+  if (req.session.adminRole !== "owner" && (before.role === "owner" || input.role === "owner")) { res.status(403).json({ error: "المالك فقط يمكنه تعديل حسابات المالك" }); return; }
   const { password, ...updates } = input;
   const [user] = await db.update(usersTable).set({ ...updates, ...(password ? { passwordHash: await hashPassword(password) } : {}) }).where(eq(usersTable.id, id)).returning();
-  if (!user) { res.status(404).json({ error: "الموظف غير موجود" }); return; }
   await writeAuditLog(req, { action: "employee.update", entityType: "employee", entityId: id, description: `تعديل الموظف ${user.name}` });
   const { passwordHash: _passwordHash, ...safeUser } = user;
   res.json(safeUser);

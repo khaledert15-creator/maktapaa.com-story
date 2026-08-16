@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db, bannersTable, brandAssetsTable, faqsTable, helpLinksTable, helpSectionsTable, siteSettingsTable, stagesTable, gradesTable, subjectsTable, publishersTable, categoriesTable, productsTable } from "@workspace/db";
 import { and, eq, asc, inArray, sql, isNull, lte, gte, or } from "drizzle-orm";
+import { z } from "@workspace/api-zod";
 import { enrichProductSummaries } from "../services/catalog";
 
 const router: IRouter = Router();
@@ -89,6 +90,25 @@ router.get("/content/faqs", async (_req, res): Promise<void> => {
     .where(eq(faqsTable.isActive, true))
     .orderBy(asc(faqsTable.sortOrder));
   res.json(faqs);
+});
+
+const informationPageSlugs = new Set(["about", "contact", "shipping-policy", "return-policy", "privacy", "terms"]);
+const informationPageSchema = z.object({
+  title: z.string().trim().min(1).max(200),
+  intro: z.string().trim().min(1).max(2_000),
+  sections: z.array(z.object({ title: z.string().trim().min(1).max(200), body: z.string().trim().min(1).max(10_000) })).max(30),
+});
+router.get("/content/pages/:slug", async (req, res): Promise<void> => {
+  const slug = Array.isArray(req.params.slug) ? req.params.slug[0] : req.params.slug;
+  if (!informationPageSlugs.has(slug)) { res.status(404).json({ error: "الصفحة غير موجودة" }); return; }
+  const [setting] = await db.select().from(siteSettingsTable).where(eq(siteSettingsTable.key, `page.${slug}`));
+  if (!setting?.value) { res.json({ content: null }); return; }
+  try {
+    const parsed = informationPageSchema.safeParse(JSON.parse(setting.value));
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ content: parsed.success ? parsed.data : null });
+  }
+  catch { res.json({ content: null }); }
 });
 
 router.get("/content/homepage", async (_req, res): Promise<void> => {

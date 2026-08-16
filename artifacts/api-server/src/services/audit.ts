@@ -11,6 +11,19 @@ type AuditInput = {
   afterData?: Record<string, unknown> | null;
 };
 
+const sensitiveAuditKey = /(?:password|secret|token|authorization|cookie|session)/i;
+
+export function sanitizeAuditData(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sanitizeAuditData);
+  if (value instanceof Date) return value.toISOString();
+  if (!value || typeof value !== "object") return value;
+
+  return Object.fromEntries(Object.entries(value).map(([key, entry]) => [
+    key,
+    sensitiveAuditKey.test(key) ? "[REDACTED]" : sanitizeAuditData(entry),
+  ]));
+}
+
 export async function writeAuditLog(req: Request, input: AuditInput): Promise<void> {
   const employeeId = req.session.adminId ?? null;
   const [employee] = employeeId
@@ -23,8 +36,8 @@ export async function writeAuditLog(req: Request, input: AuditInput): Promise<vo
     entityType: input.entityType,
     entityId: input.entityId == null ? null : String(input.entityId),
     description: input.description,
-    beforeData: input.beforeData ?? null,
-    afterData: input.afterData ?? null,
+    beforeData: input.beforeData ? sanitizeAuditData(input.beforeData) as Record<string, unknown> : null,
+    afterData: input.afterData ? sanitizeAuditData(input.afterData) as Record<string, unknown> : null,
     ipAddress: req.ip,
   });
 }

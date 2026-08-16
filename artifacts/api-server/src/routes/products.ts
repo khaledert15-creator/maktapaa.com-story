@@ -8,6 +8,7 @@ import { enrichProductSummaries, getProductGallery, getProductGalleryRecords, im
 import { parseBody } from "../lib/validation";
 import { rateLimit } from "../lib/rate-limit";
 import { z } from "@workspace/api-zod";
+import { normalizeSearchTerm } from "../services/search";
 
 const router: IRouter = Router();
 const reviewSchema = z.object({ rating: z.coerce.number().int().min(1).max(5), comment: z.string().trim().min(3).max(2000).nullable().optional() });
@@ -28,13 +29,14 @@ router.get("/products", async (req, res): Promise<void> => {
   const conditions: ReturnType<typeof eq>[] = [eq(productsTable.status, "active"), isNull(productsTable.deletedAt) as ReturnType<typeof eq>];
 
   if (q) {
-    const pattern = `%${q.trim()}%`;
+    const pattern = `%${normalizeSearchTerm(q)}%`;
     conditions.push(or(
       ilike(productsTable.nameAr, pattern), ilike(productsTable.nameEn, pattern),
       ilike(productsTable.author, pattern), ilike(productsTable.sku, pattern),
       ilike(productsTable.barcode, pattern),
       sql`${productsTable.publisherId} in (select id from publishers where name_ar ilike ${pattern} or name_en ilike ${pattern})`,
       sql`${productsTable.subjectId} in (select id from subjects where name_ar ilike ${pattern} or name_en ilike ${pattern})`,
+      sql`${productsTable.gradeId} in (select id from grades where name_ar ilike ${pattern} or name_en ilike ${pattern})`,
     ) as ReturnType<typeof eq>);
   }
   if (stageId) conditions.push(eq(productsTable.stageId, parseInt(stageId, 10)));
@@ -105,11 +107,19 @@ router.get("/products/featured", async (_req, res): Promise<void> => {
 // Search suggestions
 router.get("/products/search/suggestions", async (req, res): Promise<void> => {
   const { q } = req.query as { q: string };
-  if (!q || q.length < 2) { res.json({ products: [], suggestions: [], totalCount: 0 }); return; }
+  const normalizedQuery = normalizeSearchTerm(q || "");
+  if (normalizedQuery.length < 2) { res.json({ products: [], suggestions: [], totalCount: 0 }); return; }
+  const pattern = `%${normalizedQuery}%`;
 
   const items = await db.select().from(productsTable)
     .where(and(
-      or(ilike(productsTable.nameAr, `%${q}%`), ilike(productsTable.nameEn, `%${q}%`)),
+      or(
+        ilike(productsTable.nameAr, pattern), ilike(productsTable.nameEn, pattern), ilike(productsTable.author, pattern),
+        ilike(productsTable.sku, pattern), ilike(productsTable.barcode, pattern),
+        sql`${productsTable.publisherId} in (select id from publishers where name_ar ilike ${pattern} or name_en ilike ${pattern})`,
+        sql`${productsTable.subjectId} in (select id from subjects where name_ar ilike ${pattern} or name_en ilike ${pattern})`,
+        sql`${productsTable.gradeId} in (select id from grades where name_ar ilike ${pattern} or name_en ilike ${pattern})`,
+      ),
       eq(productsTable.status, "active"),
       isNull(productsTable.deletedAt),
     ))

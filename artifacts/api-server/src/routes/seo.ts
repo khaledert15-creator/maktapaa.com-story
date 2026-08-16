@@ -7,6 +7,20 @@ import { config } from "../lib/config";
 
 const router: IRouter = Router();
 const staticPages = ["", "catalog", "offers", "stages", "categories", "publishers", "about", "contact", "faq", "shipping-policy", "return-policy", "privacy", "terms"];
+const staticMeta: Record<string, { title: string; description: string }> = {
+  catalog: { title: "الكتب | مكتبة دوت كوم", description: "تصفح الكتب التعليمية والمراجعات المتاحة مع أسعار ومخزون محدثين." },
+  offers: { title: "العروض | مكتبة دوت كوم", description: "اكتشف عروض الكتب الحالية من مكتبة دوت كوم." },
+  stages: { title: "المراحل التعليمية | مكتبة دوت كوم", description: "اختر المرحلة والصف للوصول إلى الكتب المناسبة." },
+  categories: { title: "تصنيفات الكتب | مكتبة دوت كوم", description: "تصفح تصنيفات الكتب التعليمية المتاحة." },
+  publishers: { title: "دور النشر | مكتبة دوت كوم", description: "تصفح الكتب حسب دار النشر." },
+  about: { title: "من نحن | مكتبة دوت كوم", description: "تعرف على مكتبة دوت كوم وطريقة عمل المتجر." },
+  contact: { title: "تواصل معنا | مكتبة دوت كوم", description: "بيانات التواصل مع فريق مكتبة دوت كوم." },
+  faq: { title: "الأسئلة الشائعة | مكتبة دوت كوم", description: "إجابات عن الطلبات والشحن واستخدام المتجر." },
+  "shipping-policy": { title: "سياسة الشحن | مكتبة دوت كوم", description: "تعرف على حساب الشحن ومواعيد التوصيل." },
+  "return-policy": { title: "الإلغاء والاسترجاع | مكتبة دوت كوم", description: "تعرف على طلبات الإلغاء والاسترجاع." },
+  privacy: { title: "سياسة الخصوصية | مكتبة دوت كوم", description: "تعرف على كيفية استخدام وحماية بيانات العملاء." },
+  terms: { title: "الشروط والأحكام | مكتبة دوت كوم", description: "شروط استخدام متجر مكتبة دوت كوم." },
+};
 let templatePromise: Promise<string> | null = null;
 
 function html(value: unknown): string {
@@ -101,6 +115,26 @@ router.get("/publisher/:reference", async (req, res): Promise<void> => {
   const path = `/publisher/${publisher.id}-${slugify(publisher.nameAr)}`;
   const description = `تصفح إصدارات ${publisher.nameAr} المتاحة في مكتبة دوت كوم.`;
   const page = await renderPage({ title: `${publisher.nameAr} | مكتبة دوت كوم`, description, canonicalPath: path, image: publisher.logo, jsonLd: [organization(), breadcrumbs([{ name: "الرئيسية", path: "/" }, { name: "دور النشر", path: "/publishers" }, { name: publisher.nameAr, path }])], body: `<main dir="rtl"><h1>${html(publisher.nameAr)}</h1><p>${html(description)}</p></main>` });
+  res.type("html").send(page.document);
+});
+
+router.get(staticPages.slice(1).map(page => `/${page}`), async (req, res): Promise<void> => {
+  const slug = req.path.slice(1);
+  const fallback = staticMeta[slug] || staticMeta.catalog;
+  const [setting] = await db.select().from(siteSettingsTable).where(eq(siteSettingsTable.key, `page.${slug}`));
+  let title = fallback.title;
+  let description = fallback.description;
+  let sections: { title: string; body: string }[] = [];
+  if (setting?.value) {
+    try {
+      const content = JSON.parse(setting.value) as { title?: unknown; intro?: unknown; sections?: unknown };
+      if (typeof content.title === "string" && content.title.trim()) title = `${content.title.trim()} | مكتبة دوت كوم`;
+      if (typeof content.intro === "string" && content.intro.trim()) description = content.intro.trim();
+      if (Array.isArray(content.sections)) sections = content.sections.filter((section): section is { title: string; body: string } => Boolean(section && typeof section === "object" && typeof section.title === "string" && typeof section.body === "string"));
+    } catch { /* The client also falls back safely when an old malformed setting exists. */ }
+  }
+  const body = `<main dir="rtl"><h1>${html(title.replace(/ \| مكتبة دوت كوم$/, ""))}</h1><p>${html(description)}</p>${sections.map(section => `<section><h2>${html(section.title)}</h2><p>${html(section.body)}</p></section>`).join("")}</main>`;
+  const page = await renderPage({ title, description, canonicalPath: req.path, jsonLd: [organization(), breadcrumbs([{ name: "الرئيسية", path: "/" }, { name: title.replace(/ \| مكتبة دوت كوم$/, ""), path: req.path }])], body });
   res.type("html").send(page.document);
 });
 
