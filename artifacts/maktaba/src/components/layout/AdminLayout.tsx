@@ -21,6 +21,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getGetSiteSettingsQueryKey, useGetSiteSettings } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
 import { adminApi } from "@/lib/admin-api";
+import { DEFAULT_BRAND_LOGO } from "@/lib/brand";
 
 export function AdminLayout({ children, requiredPermission }: { children: ReactNode; requiredPermission?: string }) {
   const [location, setLocation] = useLocation();
@@ -35,7 +36,7 @@ export function AdminLayout({ children, requiredPermission }: { children: ReactN
     enabled: Boolean(admin && can("payments.view")),
     refetchInterval: 30_000,
   });
-  const adminLogo = settings?.adminLogoUrl || settings?.mainLogoUrl || settings?.logoUrl;
+  const adminLogo = settings?.adminLogoUrl || settings?.mainLogoUrl || settings?.logoUrl || DEFAULT_BRAND_LOGO;
 
   useEffect(() => {
     if (isAdminAuthLoaded && !admin) setLocation('/admin/login');

@@ -860,6 +860,53 @@ export interface BannerUpdate {
   endAt?: string;
 }
 
+export interface HomepageModelLayout {
+  productId: number;
+  /** @nullable */
+  imageUrl?: string | null;
+  /** @nullable */
+  imageStorageKey?: string | null;
+  /** @nullable */
+  caption?: string | null;
+}
+
+export interface HomepageDiscoveryLayout {
+  enabled: boolean;
+  badgeText: string;
+  title: string;
+  description: string;
+  secondaryTitle: string;
+  baccalaureateTitle: string;
+  teachersTitle: string;
+  secondaryGradeIds: number[];
+  baccalaureateGradeIds: number[];
+  teacherIds: number[];
+  models: HomepageModelLayout[];
+}
+
+export interface HomepageSectionLayout {
+  enabled: boolean;
+  title: string;
+  /** @nullable */
+  subtitle?: string | null;
+  itemIds: number[];
+}
+
+export interface HomepageLayout {
+  discovery: HomepageDiscoveryLayout;
+  stages: HomepageSectionLayout;
+  grades: HomepageSectionLayout;
+  subjects: HomepageSectionLayout;
+}
+
+export interface HomepageTeacher {
+  id: number;
+  nameAr: string;
+  /** @nullable */
+  nameEn?: string | null;
+  sortOrder: number;
+}
+
 export interface HomepageContent {
   banners?: Banner[];
   featuredProducts?: ProductSummary[];
@@ -870,11 +917,14 @@ export interface HomepageContent {
   bundles?: ProductSummary[];
   freeShippingProducts?: ProductSummary[];
   recommendedProducts?: ProductSummary[];
+  showcaseProducts?: ProductSummary[];
+  homepageLayout?: HomepageLayout;
   stages?: Stage[];
   grades?: Grade[];
   subjects?: Subject[];
   categories?: Category[];
   publishers?: Publisher[];
+  teachers?: HomepageTeacher[];
   settings?: SiteSettings;
 }
 

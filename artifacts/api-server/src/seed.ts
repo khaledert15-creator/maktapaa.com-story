@@ -21,31 +21,43 @@ async function seed() {
     { nameAr: "إعدادي", nameEn: "Preparatory", sortOrder: 2 },
     { nameAr: "ثانوي", nameEn: "Secondary", sortOrder: 3 },
     { nameAr: "أزهر", nameEn: "Al-Azhar", sortOrder: 4 },
+    { nameAr: "بكالوريا", nameEn: "Baccalaureate", sortOrder: 5 },
   ];
-  const existingStages = await db.select().from(stagesTable);
-  const stages = existingStages.length ? existingStages : await db.insert(stagesTable).values(stagesData).returning();
+  for (const stage of stagesData) {
+    const [existingStage] = await db.select({ id: stagesTable.id }).from(stagesTable).where(eq(stagesTable.nameAr, stage.nameAr)).limit(1);
+    if (!existingStage) await db.insert(stagesTable).values(stage);
+  }
+  const stages = await db.select().from(stagesTable);
+  const stageIdByName = new Map(stages.map(stage => [stage.nameAr, stage.id]));
   console.log(`✅ ${stages.length} stages`);
 
   // Grades
   const gradesData = [
     // Primary (stage 1)
-    { nameAr: "الأول الابتدائي", stageId: stages[0]?.id || 1, sortOrder: 1 },
-    { nameAr: "الثاني الابتدائي", stageId: stages[0]?.id || 1, sortOrder: 2 },
-    { nameAr: "الثالث الابتدائي", stageId: stages[0]?.id || 1, sortOrder: 3 },
-    { nameAr: "الرابع الابتدائي", stageId: stages[0]?.id || 1, sortOrder: 4 },
-    { nameAr: "الخامس الابتدائي", stageId: stages[0]?.id || 1, sortOrder: 5 },
-    { nameAr: "السادس الابتدائي", stageId: stages[0]?.id || 1, sortOrder: 6 },
+    { nameAr: "الأول الابتدائي", stageId: stageIdByName.get("ابتدائي"), sortOrder: 1 },
+    { nameAr: "الثاني الابتدائي", stageId: stageIdByName.get("ابتدائي"), sortOrder: 2 },
+    { nameAr: "الثالث الابتدائي", stageId: stageIdByName.get("ابتدائي"), sortOrder: 3 },
+    { nameAr: "الرابع الابتدائي", stageId: stageIdByName.get("ابتدائي"), sortOrder: 4 },
+    { nameAr: "الخامس الابتدائي", stageId: stageIdByName.get("ابتدائي"), sortOrder: 5 },
+    { nameAr: "السادس الابتدائي", stageId: stageIdByName.get("ابتدائي"), sortOrder: 6 },
     // Preparatory (stage 2)
-    { nameAr: "الأول الإعدادي", stageId: stages[1]?.id || 2, sortOrder: 1 },
-    { nameAr: "الثاني الإعدادي", stageId: stages[1]?.id || 2, sortOrder: 2 },
-    { nameAr: "الثالث الإعدادي", stageId: stages[1]?.id || 2, sortOrder: 3 },
+    { nameAr: "الأول الإعدادي", stageId: stageIdByName.get("إعدادي"), sortOrder: 1 },
+    { nameAr: "الثاني الإعدادي", stageId: stageIdByName.get("إعدادي"), sortOrder: 2 },
+    { nameAr: "الثالث الإعدادي", stageId: stageIdByName.get("إعدادي"), sortOrder: 3 },
     // Secondary (stage 3)
-    { nameAr: "الأول الثانوي", stageId: stages[2]?.id || 3, sortOrder: 1 },
-    { nameAr: "الثاني الثانوي", stageId: stages[2]?.id || 3, sortOrder: 2 },
-    { nameAr: "الثالث الثانوي", stageId: stages[2]?.id || 3, sortOrder: 3 },
+    { nameAr: "الأول الثانوي", stageId: stageIdByName.get("ثانوي"), sortOrder: 1 },
+    { nameAr: "الثاني الثانوي", stageId: stageIdByName.get("ثانوي"), sortOrder: 2 },
+    { nameAr: "الثالث الثانوي", stageId: stageIdByName.get("ثانوي"), sortOrder: 3 },
+    // Egyptian Baccalaureate
+    { nameAr: "الأول بكالوريا", stageId: stageIdByName.get("بكالوريا"), sortOrder: 1 },
+    { nameAr: "الثاني بكالوريا", stageId: stageIdByName.get("بكالوريا"), sortOrder: 2 },
   ];
-  const existingGrades = await db.select().from(gradesTable);
-  const grades = existingGrades.length ? existingGrades : await db.insert(gradesTable).values(gradesData).returning();
+  for (const grade of gradesData) {
+    if (!grade.stageId) throw new Error(`Missing stage for grade ${grade.nameAr}`);
+    const [existingGrade] = await db.select({ id: gradesTable.id }).from(gradesTable).where(and(eq(gradesTable.nameAr, grade.nameAr), eq(gradesTable.stageId, grade.stageId))).limit(1);
+    if (!existingGrade) await db.insert(gradesTable).values({ ...grade, stageId: grade.stageId });
+  }
+  const grades = await db.select().from(gradesTable);
   console.log(`✅ ${grades.length} grades`);
 
   // Subjects

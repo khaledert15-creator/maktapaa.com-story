@@ -8,6 +8,8 @@
 import type { Banner } from './banner';
 import type { Category } from './category';
 import type { Grade } from './grade';
+import type { HomepageLayout } from './homepageLayout';
+import type { HomepageTeacher } from './homepageTeacher';
 import type { ProductSummary } from './productSummary';
 import type { Publisher } from './publisher';
 import type { SiteSettings } from './siteSettings';
@@ -24,10 +26,13 @@ export interface HomepageContent {
   bundles?: ProductSummary[];
   freeShippingProducts?: ProductSummary[];
   recommendedProducts?: ProductSummary[];
+  showcaseProducts?: ProductSummary[];
+  homepageLayout?: HomepageLayout;
   stages?: Stage[];
   grades?: Grade[];
   subjects?: Subject[];
   categories?: Category[];
   publishers?: Publisher[];
+  teachers?: HomepageTeacher[];
   settings?: SiteSettings;
 }

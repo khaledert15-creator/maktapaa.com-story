@@ -134,6 +134,13 @@
       "when": 1786909322253,
       "tag": "0018_glorious_rafael_vega",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1787256000000,
+      "tag": "0019_storefront_baccalaureate_focus",
+      "breakpoints": true
     }
   ]
 }

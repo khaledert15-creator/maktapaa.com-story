@@ -1,12 +1,14 @@
 import { Router, type IRouter } from "express";
-import { auditLogsTable, bannersTable, brandAssetsTable, db, faqsTable, helpLinksTable, helpSectionsTable, pool, siteSettingsTable, usersTable } from "@workspace/db";
-import { asc, desc, eq, inArray } from "drizzle-orm";
+import { auditLogsTable, bannersTable, brandAssetsTable, classificationOptionsTable, db, faqsTable, gradesTable, helpLinksTable, helpSectionsTable, pool, productsTable, siteSettingsTable, stagesTable, subjectsTable, usersTable } from "@workspace/db";
+import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
 import { requireAdminAuth, requireAdminPermission, hashPassword } from "../../lib/auth";
 import { writeAuditLog } from "../../services/audit";
 import { parseBody } from "../../lib/validation";
 import { z } from "@workspace/api-zod";
 import multer from "multer";
 import { imageStorage } from "../../services/storage";
+import { enrichProductSummaries } from "../../services/catalog";
+import { createDefaultHomepageLayout, HOMEPAGE_LAYOUT_SETTING_KEY, homepageLayoutSchema, parseHomepageLayout } from "../../services/homepage-layout";
 
 const router: IRouter = Router();
 router.use(requireAdminAuth);
@@ -130,10 +132,84 @@ router.get("/admin/content/settings", requireAdminPermission("content.view"), as
 router.put("/admin/content/settings/:key", requireAdminPermission("content.manage"), async (req, res) => {
   const key = Array.isArray(req.params.key) ? req.params.key[0] : req.params.key;
   if (!/^[a-zA-Z0-9_.-]{1,100}$/.test(key)) { res.status(400).json({ error: "مفتاح الإعداد غير صحيح" }); return; }
+  if (key === HOMEPAGE_LAYOUT_SETTING_KEY) { res.status(400).json({ error: "استخدم محرر أقسام الصفحة الرئيسية لحفظ هذا الإعداد" }); return; }
   const input = parseBody(settingSchema, req.body, res); if (!input) return;
   const [row] = await db.insert(siteSettingsTable).values({ key, value: String(input.value ?? "") }).onConflictDoUpdate({ target: siteSettingsTable.key, set: { value: String(input.value ?? ""), updatedAt: new Date() } }).returning();
   await writeAuditLog(req, { action: "content.setting_update", entityType: "setting", entityId: key, description: `تعديل إعداد ${key}` });
   res.json(row);
+});
+router.get("/admin/content/homepage-layout", requireAdminPermission("content.view"), async (_req, res): Promise<void> => {
+  const [stages, grades, subjects, teachers, productRows, stored] = await Promise.all([
+    db.select().from(stagesTable).orderBy(asc(stagesTable.sortOrder), asc(stagesTable.nameAr)),
+    db.select().from(gradesTable).orderBy(asc(gradesTable.sortOrder), asc(gradesTable.nameAr)),
+    db.select().from(subjectsTable).orderBy(asc(subjectsTable.nameAr)),
+    db.select({ id: classificationOptionsTable.id, nameAr: classificationOptionsTable.nameAr, nameEn: classificationOptionsTable.nameEn, sortOrder: classificationOptionsTable.sortOrder, isActive: classificationOptionsTable.isActive })
+      .from(classificationOptionsTable).where(eq(classificationOptionsTable.kind, "teacher")).orderBy(asc(classificationOptionsTable.sortOrder), asc(classificationOptionsTable.nameAr)),
+    db.select().from(productsTable).where(isNull(productsTable.deletedAt)).orderBy(desc(productsTable.isFeatured), desc(productsTable.isNew), desc(productsTable.updatedAt)).limit(1_000),
+    db.select().from(siteSettingsTable).where(eq(siteSettingsTable.key, HOMEPAGE_LAYOUT_SETTING_KEY)).limit(1),
+  ]);
+  const products = await enrichProductSummaries(productRows);
+  const productRowMap = new Map(productRows.map(row => [row.id, row]));
+  const focusedStageIds = new Set(stages.filter(stage => /ثانو|بكالوريا/i.test(stage.nameAr)).map(stage => stage.id));
+  const activeProductIds = products.filter(item => productRowMap.get(item.id)?.status === "active").map(item => item.id);
+  const focusedProductIds = activeProductIds.filter(id => {
+    const row = productRowMap.get(id); return row?.stageId ? focusedStageIds.has(row.stageId) : false;
+  });
+  const layout = parseHomepageLayout(stored[0]?.value) ?? createDefaultHomepageLayout({
+    stages,
+    grades,
+    subjects,
+    teacherIds: teachers.filter(item => item.isActive).map(item => item.id),
+    productIds: [...focusedProductIds, ...activeProductIds.filter(id => !focusedProductIds.includes(id))],
+  });
+  res.setHeader("Cache-Control", "no-store");
+  res.json({
+    layout,
+    options: {
+      stages: stages.map(item => ({ id: item.id, nameAr: item.nameAr, isActive: item.isActive })),
+      grades: grades.map(item => ({ id: item.id, nameAr: item.nameAr, stageId: item.stageId, isActive: item.isActive })),
+      subjects: subjects.map(item => ({ id: item.id, nameAr: item.nameAr, isActive: item.isActive })),
+      teachers,
+      products: products.map(item => ({ id: item.id, nameAr: item.nameAr, slug: item.slug, coverImage: item.coverImage, status: productRowMap.get(item.id)?.status ?? "draft" })),
+    },
+  });
+});
+router.post("/admin/content/homepage-layout/model-image", requireAdminPermission("content.manage"), bannerUpload.single("image"), async (req, res): Promise<void> => {
+  if (!req.file) { res.status(400).json({ error: "اختر صورة المجسم" }); return; }
+  const stored = await imageStorage.saveImage(req.file.buffer, "homepage-models");
+  await writeAuditLog(req, { action: "content.homepage_model_image_upload", entityType: "homepage_layout", entityId: "homepage", description: "رفع صورة مخصصة لمجسم الصفحة الرئيسية", afterData: { imageUrl: stored.url, imageStorageKey: stored.storageKey } });
+  res.status(201).json({ imageUrl: stored.url, imageStorageKey: stored.storageKey, imageWidth: stored.width, imageHeight: stored.height, imageVariants: stored.variants });
+});
+router.put("/admin/content/homepage-layout", requireAdminPermission("content.manage"), async (req, res): Promise<void> => {
+  const input = parseBody(homepageLayoutSchema, req.body, res); if (!input) return;
+  const referenced = {
+    stages: input.stages.itemIds,
+    grades: [...input.grades.itemIds, ...input.discovery.secondaryGradeIds, ...input.discovery.baccalaureateGradeIds],
+    subjects: input.subjects.itemIds,
+    teachers: input.discovery.teacherIds,
+    products: input.discovery.models.map(item => item.productId),
+  };
+  const [stageRows, gradeRows, subjectRows, teacherRows, productRows, beforeRows] = await Promise.all([
+    referenced.stages.length ? db.select({ id: stagesTable.id }).from(stagesTable).where(inArray(stagesTable.id, referenced.stages)) : [],
+    referenced.grades.length ? db.select({ id: gradesTable.id }).from(gradesTable).where(inArray(gradesTable.id, [...new Set(referenced.grades)])) : [],
+    referenced.subjects.length ? db.select({ id: subjectsTable.id }).from(subjectsTable).where(inArray(subjectsTable.id, referenced.subjects)) : [],
+    referenced.teachers.length ? db.select({ id: classificationOptionsTable.id }).from(classificationOptionsTable).where(and(eq(classificationOptionsTable.kind, "teacher"), inArray(classificationOptionsTable.id, referenced.teachers))) : [],
+    referenced.products.length ? db.select({ id: productsTable.id }).from(productsTable).where(and(inArray(productsTable.id, referenced.products), isNull(productsTable.deletedAt))) : [],
+    db.select().from(siteSettingsTable).where(eq(siteSettingsTable.key, HOMEPAGE_LAYOUT_SETTING_KEY)).limit(1),
+  ]);
+  const missing = [
+    ["المراحل", referenced.stages, stageRows], ["الصفوف", [...new Set(referenced.grades)], gradeRows], ["المواد", referenced.subjects, subjectRows],
+    ["المدرسين", referenced.teachers, teacherRows], ["المنتجات", referenced.products, productRows],
+  ].find(([, ids, rows]) => (ids as number[]).length !== (rows as { id: number }[]).length);
+  if (missing) { res.status(400).json({ error: `يوجد عنصر محذوف أو غير صحيح ضمن ${missing[0]}` }); return; }
+  const before = parseHomepageLayout(beforeRows[0]?.value);
+  const serialized = JSON.stringify(input);
+  await db.insert(siteSettingsTable).values({ key: HOMEPAGE_LAYOUT_SETTING_KEY, value: serialized }).onConflictDoUpdate({ target: siteSettingsTable.key, set: { value: serialized, updatedAt: new Date() } });
+  await writeAuditLog(req, { action: "content.homepage_layout_update", entityType: "homepage_layout", entityId: "homepage", description: "تعديل أقسام الصفحة الرئيسية والمجسمات", beforeData: before, afterData: input });
+  const activeStorageKeys = new Set(input.discovery.models.flatMap(item => item.imageStorageKey ? [item.imageStorageKey] : []));
+  const removedStorageKeys = before?.discovery.models.flatMap(item => item.imageStorageKey && !activeStorageKeys.has(item.imageStorageKey) ? [item.imageStorageKey] : []) ?? [];
+  await Promise.allSettled(removedStorageKeys.map(key => imageStorage.deleteImage(key)));
+  res.json(input);
 });
 router.get("/admin/content/announcement", requireAdminPermission("content.view"), async (_req, res) => {
   const rows = await db.select().from(siteSettingsTable).where(inArray(siteSettingsTable.key, [...announcementKeys]));

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Heart, BookOpen, ShoppingCart } from "lucide-react";
 import type { ProductSummary } from "@workspace/api-client-react";
@@ -13,6 +14,8 @@ import { trackCommerceEvent } from "@/lib/analytics";
 
 export function ProductCard({ product, isFavorite = false }: { product: ProductSummary; isFavorite?: boolean }) {
   const responsive = product as ProductSummary & { coverImageSrcSet?: string | null; coverImageWidth?: number | null; coverImageHeight?: number | null };
+  const [coverFailed, setCoverFailed] = useState(false);
+  const hasUsableCover = Boolean(product.coverImage) && !coverFailed && !/placehold\.co/i.test(product.coverImage || "");
   const { customer } = useAuth();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
@@ -41,13 +44,10 @@ export function ProductCard({ product, isFavorite = false }: { product: ProductS
   return (
     <Card className="group relative flex h-full flex-col overflow-hidden rounded-2xl border-border/70 bg-card transition duration-300 hover:-translate-y-1 hover:border-secondary/50 hover:shadow-xl">
       <Link href={`/product/${product.slug}`} className="relative block aspect-[3/4] overflow-hidden bg-gradient-to-br from-slate-50 to-blue-50">
-        {product.coverImage ? (
-          <img src={product.coverImage} srcSet={responsive.coverImageSrcSet || undefined} sizes="(max-width: 640px) 50vw, (max-width: 1280px) 25vw, 240px" alt={product.nameAr} width={responsive.coverImageWidth || 360} height={responsive.coverImageHeight || 480} loading="lazy" decoding="async" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+        {hasUsableCover ? (
+          <img src={product.coverImage!} srcSet={responsive.coverImageSrcSet || undefined} sizes="(max-width: 640px) 50vw, (max-width: 1280px) 25vw, 240px" alt={product.nameAr} width={responsive.coverImageWidth || 360} height={responsive.coverImageHeight || 480} loading="lazy" decoding="async" onError={() => setCoverFailed(true)} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
         ) : (
-          <div className="flex h-full flex-col items-center justify-center gap-3 p-5 text-center text-primary/35">
-            <BookOpen className="h-14 w-14" />
-            <span className="line-clamp-3 text-sm font-bold">{product.nameAr}</span>
-          </div>
+          <GeneratedBookCover product={product} />
         )}
         <div className="absolute right-2 top-2 flex flex-col gap-1.5">
           {!!product.discountPercent && product.discountPercent > 0 && <Badge className="bg-rose-600 text-white">خصم {product.discountPercent}%</Badge>}
@@ -77,5 +77,28 @@ export function ProductCard({ product, isFavorite = false }: { product: ProductS
       </CardContent>
       {notice.modal}
     </Card>
+  );
+}
+
+const coverThemes = [
+  "from-sky-500 via-blue-600 to-indigo-900",
+  "from-violet-500 via-purple-600 to-slate-900",
+  "from-amber-400 via-orange-500 to-rose-800",
+  "from-emerald-400 via-teal-600 to-slate-900",
+  "from-rose-400 via-pink-600 to-purple-900",
+];
+
+function GeneratedBookCover({ product }: { product: ProductSummary }) {
+  const theme = coverThemes[Math.abs(product.id) % coverThemes.length];
+  return (
+    <div role="img" aria-label={`غلاف ${product.nameAr}`} className={`relative flex h-full flex-col items-center justify-center overflow-hidden bg-gradient-to-br ${theme} p-5 text-center text-white transition duration-500 group-hover:scale-105`}>
+      <div className="absolute inset-y-0 right-0 w-3 border-l border-white/20 bg-white/10" />
+      <div className="absolute -left-10 -top-10 h-32 w-32 rounded-full bg-white/10 blur-sm" />
+      <div className="absolute -bottom-12 -right-10 h-36 w-36 rounded-full bg-slate-950/20" />
+      <span className="relative mb-5 rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[10px] font-bold backdrop-blur-sm sm:text-xs">{product.subject || "كتب تعليمية"}</span>
+      <BookOpen className="relative mb-4 h-12 w-12 drop-shadow sm:h-14 sm:w-14" strokeWidth={1.7} />
+      <span className="relative line-clamp-3 text-sm font-black leading-6 drop-shadow sm:text-base">{product.nameAr}</span>
+      <span className="relative mt-4 text-[10px] font-bold text-white/75">مكتبة دوت كوم</span>
+    </div>
   );
 }

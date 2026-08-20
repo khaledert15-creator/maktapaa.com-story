@@ -17,6 +17,7 @@ import { HeroBanner, type HeroSlide } from "@/components/storefront/HeroBanner";
 import { AdminHelpContent } from "@/components/admin/AdminHelpContent";
 import { AdminBranding } from "@/components/admin/AdminBranding";
 import { InformationPagesEditor } from "@/components/admin/InformationPagesEditor";
+import { HomepageLayoutEditor } from "@/components/admin/HomepageLayoutEditor";
 
 type Announcement = { text: string; isActive: boolean; link: string | null; startAt: string | null; endAt: string | null };
 type Setting = { id: number; key: string; value?: string | null };
@@ -241,6 +242,7 @@ export default function AdminContent() {
 
           <div className="flex items-center justify-between gap-4"><div><h2 className="text-2xl font-black">شرائح البانر الرئيسي</h2><p className="mt-1 text-sm text-muted-foreground">يدعم عدة شرائح مرتبة مع حالة وجدول نشر مستقل لكل شريحة.</p></div><Button onClick={openNewBanner}><Plus className="ml-2 h-4 w-4" /> شريحة جديدة</Button></div>
           {!banners.length ? <Card><CardContent className="py-20 text-center"><ImagePlus className="mx-auto mb-4 h-12 w-12 text-muted-foreground/40" /><p className="font-bold">لا توجد شرائح بانر</p><p className="mt-1 text-sm text-muted-foreground">أضف أول شريحة ثم عاينها قبل تفعيلها.</p></CardContent></Card> : <div className="grid gap-5 xl:grid-cols-2">{banners.map(banner => <BannerCard key={banner.id} banner={banner} onEdit={() => openBanner(banner)} onPreview={() => setPreviewSlide(banner)} onToggle={() => void toggleBanner(banner)} onDelete={() => setDeletingId(banner.id)} />)}</div>}
+          <HomepageLayoutEditor onSaved={refreshPublicContent} />
         </TabsContent>
         <TabsContent value="pages" className="mt-6"><InformationPagesEditor settings={settings} onSaved={setting => setSettings(rows => [...rows.filter(row => row.key !== setting.key), setting])} /></TabsContent>
         <TabsContent value="help" className="mt-6"><AdminHelpContent onSaved={refreshPublicContent} /></TabsContent>

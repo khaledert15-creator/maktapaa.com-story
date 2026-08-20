@@ -2684,6 +2684,12 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ProductSummary"
+        showcaseProducts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductSummary"
+        homepageLayout:
+          $ref: "#/components/schemas/HomepageLayout"
         stages:
           type: array
           items:
@@ -2704,8 +2710,79 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Publisher"
+        teachers:
+          type: array
+          items:
+            $ref: "#/components/schemas/HomepageTeacher"
         settings:
           $ref: "#/components/schemas/SiteSettings"
+
+    HomepageLayout:
+      type: object
+      required: [discovery, stages, grades, subjects]
+      properties:
+        discovery:
+          $ref: "#/components/schemas/HomepageDiscoveryLayout"
+        stages:
+          $ref: "#/components/schemas/HomepageSectionLayout"
+        grades:
+          $ref: "#/components/schemas/HomepageSectionLayout"
+        subjects:
+          $ref: "#/components/schemas/HomepageSectionLayout"
+
+    HomepageSectionLayout:
+      type: object
+      required: [enabled, title, itemIds]
+      properties:
+        enabled: { type: boolean }
+        title: { type: string }
+        subtitle: { type: ["string", "null"] }
+        itemIds:
+          type: array
+          items: { type: integer }
+
+    HomepageDiscoveryLayout:
+      type: object
+      required: [enabled, badgeText, title, description, secondaryTitle, baccalaureateTitle, teachersTitle, secondaryGradeIds, baccalaureateGradeIds, teacherIds, models]
+      properties:
+        enabled: { type: boolean }
+        badgeText: { type: string }
+        title: { type: string }
+        description: { type: string }
+        secondaryTitle: { type: string }
+        baccalaureateTitle: { type: string }
+        teachersTitle: { type: string }
+        secondaryGradeIds:
+          type: array
+          items: { type: integer }
+        baccalaureateGradeIds:
+          type: array
+          items: { type: integer }
+        teacherIds:
+          type: array
+          items: { type: integer }
+        models:
+          type: array
+          items:
+            $ref: "#/components/schemas/HomepageModelLayout"
+
+    HomepageModelLayout:
+      type: object
+      required: [productId]
+      properties:
+        productId: { type: integer }
+        imageUrl: { type: ["string", "null"] }
+        imageStorageKey: { type: ["string", "null"] }
+        caption: { type: ["string", "null"] }
+
+    HomepageTeacher:
+      type: object
+      required: [id, nameAr, sortOrder]
+      properties:
+        id: { type: integer }
+        nameAr: { type: string }
+        nameEn: { type: ["string", "null"] }
+        sortOrder: { type: integer }
 
     Faq:
       type: object

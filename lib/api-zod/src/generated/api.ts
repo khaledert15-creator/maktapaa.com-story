@@ -1463,6 +1463,71 @@ export const GetHomepageContentResponse = zod.object({
   "schoolYear": zod.string().nullish(),
   "author": zod.string().nullish()
 })).optional(),
+  "showcaseProducts": zod.array(zod.object({
+  "id": zod.number(),
+  "nameAr": zod.string(),
+  "nameEn": zod.string().nullish(),
+  "slug": zod.string(),
+  "coverImage": zod.string().nullish(),
+  "price": zod.number(),
+  "oldPrice": zod.number().nullish(),
+  "discountPercent": zod.number().nullish(),
+  "inStock": zod.boolean(),
+  "isBestSeller": zod.boolean().optional(),
+  "isNew": zod.boolean().optional(),
+  "isFeatured": zod.boolean().optional(),
+  "isOffer": zod.boolean().optional(),
+  "isRevision": zod.boolean().optional(),
+  "isBundle": zod.boolean().optional(),
+  "freeShipping": zod.boolean().optional(),
+  "freeShippingBadgeText": zod.string().nullish(),
+  "publisher": zod.string().nullish(),
+  "stage": zod.string().nullish(),
+  "grade": zod.string().nullish(),
+  "subject": zod.string().nullish(),
+  "category": zod.string().nullish(),
+  "educationType": zod.string().nullish(),
+  "schoolYear": zod.string().nullish(),
+  "author": zod.string().nullish()
+})).optional(),
+  "homepageLayout": zod.object({
+  "discovery": zod.object({
+  "enabled": zod.boolean(),
+  "badgeText": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "secondaryTitle": zod.string(),
+  "baccalaureateTitle": zod.string(),
+  "teachersTitle": zod.string(),
+  "secondaryGradeIds": zod.array(zod.number()),
+  "baccalaureateGradeIds": zod.array(zod.number()),
+  "teacherIds": zod.array(zod.number()),
+  "models": zod.array(zod.object({
+  "productId": zod.number(),
+  "imageUrl": zod.string().nullish(),
+  "imageStorageKey": zod.string().nullish(),
+  "caption": zod.string().nullish()
+}))
+}),
+  "stages": zod.object({
+  "enabled": zod.boolean(),
+  "title": zod.string(),
+  "subtitle": zod.string().nullish(),
+  "itemIds": zod.array(zod.number())
+}),
+  "grades": zod.object({
+  "enabled": zod.boolean(),
+  "title": zod.string(),
+  "subtitle": zod.string().nullish(),
+  "itemIds": zod.array(zod.number())
+}),
+  "subjects": zod.object({
+  "enabled": zod.boolean(),
+  "title": zod.string(),
+  "subtitle": zod.string().nullish(),
+  "itemIds": zod.array(zod.number())
+})
+}).optional(),
   "stages": zod.array(zod.object({
   "id": zod.number(),
   "nameAr": zod.string(),
@@ -1499,6 +1564,12 @@ export const GetHomepageContentResponse = zod.object({
   "nameEn": zod.string().nullish(),
   "logo": zod.string().nullish(),
   "isActive": zod.boolean().optional()
+})).optional(),
+  "teachers": zod.array(zod.object({
+  "id": zod.number(),
+  "nameAr": zod.string(),
+  "nameEn": zod.string().nullish(),
+  "sortOrder": zod.number()
 })).optional(),
   "settings": zod.object({
   "storeName": zod.string().optional(),

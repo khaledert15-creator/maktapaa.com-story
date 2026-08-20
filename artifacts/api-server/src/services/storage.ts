@@ -19,7 +19,7 @@ export type StoredBrandAsset = Omit<StoredImage, "mimeType" | "variants"> & {
   mimeType: "image/webp" | "image/svg+xml";
   variants: StoredImage["variants"] | null;
 };
-type ImagePrefix = "products" | "banners" | "branding" | "payment-proofs";
+type ImagePrefix = "products" | "banners" | "branding" | "payment-proofs" | "homepage-models";
 
 export interface ImageStorage {
   saveImage(buffer: Buffer, prefix?: ImagePrefix): Promise<StoredImage>;

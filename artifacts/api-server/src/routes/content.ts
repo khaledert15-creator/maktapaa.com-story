@@ -1,8 +1,9 @@
 import { Router, type IRouter } from "express";
-import { db, bannersTable, brandAssetsTable, faqsTable, helpLinksTable, helpSectionsTable, siteSettingsTable, stagesTable, gradesTable, subjectsTable, publishersTable, categoriesTable, productsTable } from "@workspace/db";
+import { db, bannersTable, brandAssetsTable, classificationOptionsTable, faqsTable, helpLinksTable, helpSectionsTable, siteSettingsTable, stagesTable, gradesTable, subjectsTable, publishersTable, categoriesTable, productsTable } from "@workspace/db";
 import { and, eq, asc, inArray, sql, isNull, lte, gte, or } from "drizzle-orm";
 import { z } from "@workspace/api-zod";
 import { enrichProductSummaries } from "../services/catalog";
+import { createDefaultHomepageLayout, HOMEPAGE_LAYOUT_SETTING_KEY, parseHomepageLayout } from "../services/homepage-layout";
 
 const router: IRouter = Router();
 
@@ -113,13 +114,31 @@ router.get("/content/pages/:slug", async (req, res): Promise<void> => {
 
 router.get("/content/homepage", async (_req, res): Promise<void> => {
   res.setHeader("Cache-Control", "no-store");
-  const [banners, stages, grades, subjects, publishers, categories, productSections, settings, brandAssets] = await Promise.all([
+  const [banners, stages, grades, subjects, publishers, categories, teachers, productSections, settings, brandAssets] = await Promise.all([
     db.select().from(bannersTable).where(activeBannersWhere()).orderBy(asc(bannersTable.sortOrder)),
     db.select().from(stagesTable).where(eq(stagesTable.isActive, true)).orderBy(asc(stagesTable.sortOrder)),
     db.select().from(gradesTable).where(eq(gradesTable.isActive, true)).orderBy(asc(gradesTable.sortOrder)),
     db.select().from(subjectsTable).where(eq(subjectsTable.isActive, true)).orderBy(asc(subjectsTable.nameAr)),
     db.select().from(publishersTable).where(eq(publishersTable.isActive, true)).orderBy(asc(publishersTable.nameAr)),
-    db.select().from(categoriesTable).where(eq(categoriesTable.isActive, true)).orderBy(asc(categoriesTable.sortOrder)),
+    db.select({
+      id: categoriesTable.id,
+      nameAr: categoriesTable.nameAr,
+      nameEn: categoriesTable.nameEn,
+      slug: categoriesTable.slug,
+      image: categoriesTable.image,
+      sortOrder: categoriesTable.sortOrder,
+      isActive: categoriesTable.isActive,
+      productCount: sql<number>`(select count(*)::int from products where category_id = ${categoriesTable.id} and status = 'active' and deleted_at is null)`,
+    }).from(categoriesTable).where(eq(categoriesTable.isActive, true)).orderBy(asc(categoriesTable.sortOrder), asc(categoriesTable.nameAr)),
+    db.select({
+      id: classificationOptionsTable.id,
+      nameAr: classificationOptionsTable.nameAr,
+      nameEn: classificationOptionsTable.nameEn,
+      sortOrder: classificationOptionsTable.sortOrder,
+    }).from(classificationOptionsTable).where(and(
+      eq(classificationOptionsTable.kind, "teacher"),
+      eq(classificationOptionsTable.isActive, true),
+    )).orderBy(asc(classificationOptionsTable.sortOrder), asc(classificationOptionsTable.nameAr)),
     db.execute<{ section: string; id: number }>(sql`
       (select 'featured'::text as section, id from products where is_featured = true and status = 'active' and deleted_at is null order by sort_order desc limit 8)
       union all (select 'best'::text, id from products where is_best_seller = true and status = 'active' and deleted_at is null order by sales_count desc limit 12)
@@ -135,7 +154,17 @@ router.get("/content/homepage", async (_req, res): Promise<void> => {
   ]);
 
   const sectionIds = productSections.rows.map(row => Number(row.id));
-  const allProducts = sectionIds.length ? await db.select().from(productsTable).where(inArray(productsTable.id, [...new Set(sectionIds)])) : [];
+  const defaultProductIds = [...new Set(sectionIds)];
+  const homepageLayout = parseHomepageLayout(settings[HOMEPAGE_LAYOUT_SETTING_KEY]) ?? createDefaultHomepageLayout({
+    stages,
+    grades,
+    subjects,
+    teacherIds: teachers.map(item => item.id),
+    productIds: defaultProductIds,
+  });
+  const configuredProductIds = homepageLayout.discovery.models.map(item => item.productId);
+  const allRequestedProductIds = [...new Set([...sectionIds, ...configuredProductIds])];
+  const allProducts = allRequestedProductIds.length ? await db.select().from(productsTable).where(and(inArray(productsTable.id, allRequestedProductIds), eq(productsTable.status, "active"), isNull(productsTable.deletedAt))) : [];
   const enrichedProducts = await enrichProductSummaries(allProducts);
   const enrichedMap = new Map(enrichedProducts.map(product => [product.id, product]));
   const select = (section: string) => productSections.rows.filter(row => row.section === section).flatMap(row => {
@@ -149,9 +178,13 @@ router.get("/content/homepage", async (_req, res): Promise<void> => {
   const productBundles = select("bundles");
   const freeShipping = select("free_shipping");
   const recommended = select("recommended");
+  const showcaseProducts = homepageLayout.discovery.models.flatMap(model => {
+    const product = enrichedMap.get(model.productId); return product ? [product] : [];
+  });
 
   res.json({
     banners, stages, grades, subjects, publishers, categories,
+    teachers,
     featuredProducts: featured,
     bestSellers: best,
     newArrivals: latest,
@@ -160,6 +193,8 @@ router.get("/content/homepage", async (_req, res): Promise<void> => {
     bundles: productBundles,
     freeShippingProducts: freeShipping,
     recommendedProducts: recommended,
+    homepageLayout,
+    showcaseProducts,
     settings: mapSettings(settings, brandAssets),
   });
 });

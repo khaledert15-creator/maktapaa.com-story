@@ -3,19 +3,20 @@ import { BookOpen, Facebook, FileText, HelpCircle, Instagram, Mail, MapPin, Mess
 import { FaWhatsapp, FaTiktok, FaTelegram } from "react-icons/fa";
 import { getGetSiteSettingsQueryKey, useGetSiteSettings } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
+import { DEFAULT_BRAND_LOGO } from "@/lib/brand";
 
 type HelpItem = { id: number; textAr: string; url: string; target: "same_tab" | "new_tab"; icon?: string | null; deviceVisibility: "all" | "desktop" | "mobile" };
 type HelpContent = { id: number | null; titleAr: string; isActive: boolean; items: HelpItem[] };
 const icons = { "help-circle": HelpCircle, "package-search": PackageSearch, truck: Truck, "rotate-ccw": RotateCcw, shield: Shield, "file-text": FileText, "message-circle": MessageCircle, phone: Phone, mail: Mail, "book-open": BookOpen } as const;
 
 export function Footer() {
-  const { data: settings } = useGetSiteSettings({ query: { queryKey: getGetSiteSettingsQueryKey(), staleTime: 0, refetchInterval: 5_000 } });
-  const { data: help } = useQuery({ queryKey: ["public-help-content"], queryFn: async () => { const response = await fetch("/api/content/help"); if (!response.ok) throw new Error("تعذر تحميل روابط المساعدة"); return response.json() as Promise<HelpContent>; }, staleTime: 0, refetchInterval: 5_000 });
+  const { data: settings } = useGetSiteSettings({ query: { queryKey: getGetSiteSettingsQueryKey(), staleTime: 60_000, refetchOnWindowFocus: true } });
+  const { data: help } = useQuery({ queryKey: ["public-help-content"], queryFn: async () => { const response = await fetch("/api/content/help"); if (!response.ok) throw new Error("تعذر تحميل روابط المساعدة"); return response.json() as Promise<HelpContent>; }, staleTime: 60_000, refetchOnWindowFocus: true });
   const whatsapp = settings?.whatsappNumber?.replace(/\D/g, "");
   const socialLinks = [
     settings?.facebookUrl && [settings.facebookUrl, Facebook, "فيسبوك"], settings?.instagramUrl && [settings.instagramUrl, Instagram, "إنستجرام"], settings?.tiktokUrl && [settings.tiktokUrl, FaTiktok, "تيك توك"], settings?.telegramUrl && [settings.telegramUrl, FaTelegram, "تليجرام"], whatsapp && [`https://wa.me/${whatsapp}`, FaWhatsapp, "واتساب"],
   ].filter(Boolean) as [string, typeof Facebook, string][];
-  const footerLogo = settings?.darkBackgroundLogoUrl || settings?.mainLogoUrl || settings?.logoUrl;
+  const footerLogo = settings?.darkBackgroundLogoUrl || settings?.mainLogoUrl || settings?.logoUrl || DEFAULT_BRAND_LOGO;
   return <footer className="border-t-4 border-sky-500 bg-slate-950 pb-24 pt-14 text-white md:pb-8">
     <div className="container mx-auto grid grid-cols-1 gap-10 px-4 sm:grid-cols-2 lg:grid-cols-4">
       <div><Link href="/" className="inline-flex min-h-12 items-center" aria-label="الصفحة الرئيسية">{footerLogo ? <img src={footerLogo} alt={settings?.storeNameAr || "مكتبة دوت كوم"} width="180" height="60" className="max-h-14 max-w-48 object-contain object-right" /> : <span className="text-3xl font-black">{settings?.storeNameAr || "مكتبة دوت كوم"}</span>}</Link><p className="mt-5 max-w-sm leading-7 text-slate-400">متجر عربي للكتب التعليمية والمراجعات، ببيانات أسعار ومخزون محدثة مباشرة من إدارة المكتبة.</p><div className="mt-6 flex flex-wrap gap-3">{socialLinks.map(([href, Icon, label]) => <a key={label} href={href} target="_blank" rel="noreferrer" aria-label={label} title={label} className="rounded-xl bg-white/10 p-2.5 text-slate-300 transition hover:bg-sky-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"><Icon className="h-5 w-5" /></a>)}</div></div>

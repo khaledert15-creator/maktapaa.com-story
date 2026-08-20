@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import type { Server } from "node:http";
 import bcrypt from "bcryptjs";
+import sharp from "sharp";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import app from "../app";
 import {
@@ -14,6 +15,8 @@ import {
 } from "@workspace/db";
 import { CouponValidationError, validateCoupon } from "../services/coupons";
 import { OrderStateError, transitionOrderStatus } from "../services/order-state";
+import { HOMEPAGE_LAYOUT_SETTING_KEY } from "../services/homepage-layout";
+import { imageStorage } from "../services/storage";
 
 let server: Server;
 let baseUrl = "";
@@ -65,6 +68,20 @@ async function request(path: string, cookie: string, init: RequestInit = {}) {
   return fetch(`${baseUrl}${path}`, { ...init, headers: { cookie, ...(init.body ? { "content-type": "application/json" } : {}), ...init.headers } });
 }
 
+test("homepage exposes the secondary and baccalaureate storefront classifications", async () => {
+  const content = await fetch(`${baseUrl}/api/content/homepage`).then(response => response.json()) as {
+    stages: { id: number; nameAr: string }[];
+    grades: { nameAr: string; stageId?: number | null }[];
+  };
+  const focusedStages = content.stages.filter(stage => /ثانو|بكالوريا/.test(stage.nameAr));
+  assert.deepEqual(focusedStages.map(stage => stage.nameAr), ["ثانوي", "بكالوريا"]);
+  const focusedStageIds = new Set(focusedStages.map(stage => stage.id));
+  assert.deepEqual(
+    content.grades.filter(grade => grade.stageId && focusedStageIds.has(grade.stageId)).map(grade => grade.nameAr).sort(),
+    ["الأول الثانوي", "الثاني الثانوي", "الثالث الثانوي", "الأول بكالوريا", "الثاني بكالوريا"].sort(),
+  );
+});
+
 test("warehouse employee is denied employees, permissions, coupons, content, reports and audit but can adjust inventory", async () => {
   const { user, password } = await createAdmin("warehouse", ["products.view", "inventory.view", "inventory.adjust"]);
   const cookie = await login(user.email, password);
@@ -78,13 +95,16 @@ test("warehouse employee is denied employees, permissions, coupons, content, rep
     request("/api/admin/content/announcement", cookie),
     request("/api/admin/content/announcement", cookie, { method: "PUT", body: JSON.stringify({ text: "محظور", isActive: true }) }),
     request("/api/admin/content/banners", cookie),
+    request("/api/admin/content/homepage-layout", cookie),
+    request("/api/admin/content/homepage-layout", cookie, { method: "PUT", body: JSON.stringify({}) }),
+    request("/api/admin/content/homepage-layout/model-image", cookie, { method: "POST" }),
     request("/api/admin/content/help", cookie),
     request("/api/admin/content/branding", cookie),
     request("/api/admin/reports/inventory", cookie),
     request("/api/admin/audit-logs", cookie),
     request("/api/admin/reviews/999999", cookie, { method: "PATCH", body: JSON.stringify({ moderationStatus: "approved" }) }),
   ]);
-  assert.deepEqual(protectedRequests.map(response => response.status), Array(14).fill(403));
+  assert.deepEqual(protectedRequests.map(response => response.status), Array(17).fill(403));
 
   const suffix = randomUUID();
   const [product] = await db.insert(productsTable).values({ nameAr: `مخزون أمني ${suffix}`, slug: `security-stock-${suffix}`, price: "10", stockQuantity: 2, status: "active" }).returning();
@@ -95,7 +115,40 @@ test("warehouse employee is denied employees, permissions, coupons, content, rep
   assert.equal((await db.select().from(productsTable).where(eq(productsTable.id, product.id)))[0].stockQuantity, 3);
   contentTestCookie = cookie;
   contentTestUserId = user.id;
-  await db.update(usersTable).set({ role: "content_manager", permissions: ["content.manage"] }).where(eq(usersTable.id, user.id));
+  await db.update(usersTable).set({ role: "content_manager", permissions: ["content.view", "content.manage", "classifications.manage"] }).where(eq(usersTable.id, user.id));
+});
+
+test("homepage layout is PostgreSQL-backed, permission-protected, public immediately and audited", async () => {
+  const cookie = contentTestCookie;
+  const beforeRows = await db.select().from(siteSettingsTable).where(eq(siteSettingsTable.key, HOMEPAGE_LAYOUT_SETTING_KEY));
+  try {
+    const adminResponse = await request("/api/admin/content/homepage-layout", cookie);
+    assert.equal(adminResponse.status, 200);
+    const adminPayload = await adminResponse.json() as { layout: Record<string, unknown> & { subjects: { title: string; itemIds: number[] } }; options: { products: unknown[] } };
+    assert.ok(adminPayload.options.products.length > 0);
+    const title = `مواد اختبار ${randomUUID()}`;
+    const layout = { ...adminPayload.layout, subjects: { ...adminPayload.layout.subjects, title, itemIds: adminPayload.layout.subjects.itemIds.slice(0, 2) } };
+    const savedResponse = await request("/api/admin/content/homepage-layout", cookie, { method: "PUT", body: JSON.stringify(layout) });
+    assert.equal(savedResponse.status, 200);
+    const stored = await db.select().from(siteSettingsTable).where(eq(siteSettingsTable.key, HOMEPAGE_LAYOUT_SETTING_KEY));
+    assert.equal((JSON.parse(stored[0].value || "{}") as { subjects?: { title?: string } }).subjects?.title, title);
+    const publicHomepage = await fetch(`${baseUrl}/api/content/homepage`).then(response => response.json()) as { homepageLayout: { subjects: { title: string; itemIds: number[] } } };
+    assert.equal(publicHomepage.homepageLayout.subjects.title, title);
+    assert.deepEqual(publicHomepage.homepageLayout.subjects.itemIds, layout.subjects.itemIds);
+    const imageForm = new FormData();
+    const imageBuffer = await sharp({ create: { width: 8, height: 12, channels: 4, background: { r: 14, g: 165, b: 233, alpha: 1 } } }).png().toBuffer();
+    imageForm.set("image", new Blob([imageBuffer], { type: "image/png" }), "model.png");
+    const imageResponse = await fetch(`${baseUrl}/api/admin/content/homepage-layout/model-image`, { method: "POST", headers: { cookie }, body: imageForm });
+    assert.equal(imageResponse.status, 201);
+    const uploaded = await imageResponse.json() as { imageUrl: string; imageStorageKey: string };
+    assert.match(uploaded.imageUrl, /homepage-models/);
+    await imageStorage.deleteImage(uploaded.imageStorageKey);
+    const audit = await db.select().from(auditLogsTable).where(and(eq(auditLogsTable.employeeId, contentTestUserId), eq(auditLogsTable.action, "content.homepage_layout_update"))).orderBy(desc(auditLogsTable.createdAt)).limit(1);
+    assert.equal(audit.length, 1);
+  } finally {
+    if (beforeRows[0]) await db.insert(siteSettingsTable).values({ key: HOMEPAGE_LAYOUT_SETTING_KEY, value: beforeRows[0].value }).onConflictDoUpdate({ target: siteSettingsTable.key, set: { value: beforeRows[0].value, updatedAt: new Date() } });
+    else await db.delete(siteSettingsTable).where(eq(siteSettingsTable.key, HOMEPAGE_LAYOUT_SETTING_KEY));
+  }
 });
 
 test("help links and branding are PostgreSQL-backed, permission-protected, immediately public and audited", async () => {
@@ -454,6 +507,10 @@ test("admin UX APIs persist delivery ranges and protect classification dependenc
   const renamedTeacher = await request(`/api/admin/classifications/teachers/${teacher.id}`, cookie, { method: "PATCH", body: JSON.stringify({ nameAr: `مدرس جديد ${suffix}` }) });
   assert.equal(renamedTeacher.status, 200);
   assert.equal((await db.select().from(productsTable).where(eq(productsTable.id, product.id)))[0].author, `مدرس جديد ${suffix}`);
+  const homepageAfterTeacherRename = await fetch(`${baseUrl}/api/content/homepage`).then(response => response.json()) as { teachers: { nameAr: string }[] };
+  const publicTeacher = homepageAfterTeacherRename.teachers.find(row => row.nameAr === `مدرس جديد ${suffix}`);
+  assert.ok(publicTeacher, "renamed teacher is immediately visible in homepage content");
+  assert.ok(!homepageAfterTeacherRename.teachers.some(row => row.nameAr === `مدرس قديم ${suffix}`));
   await db.update(productsTable).set({ author: null }).where(eq(productsTable.id, product.id));
   assert.equal((await request(`/api/admin/classifications/teachers/${teacher.id}`, cookie, { method: "DELETE" })).status, 200);
 });

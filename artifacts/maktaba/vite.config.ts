@@ -65,6 +65,13 @@ export default defineConfig({
         target: process.env.API_URL || 'http://127.0.0.1:5001',
         changeOrigin: true,
       },
+      '/uploads': {
+        // Uploaded image URLs are stored as same-origin paths so they also work
+        // behind the production reverse proxy. Forward them to the API while
+        // running the Vite development server instead of returning index.html.
+        target: process.env.API_URL || 'http://127.0.0.1:5001',
+        changeOrigin: true,
+      },
     },
   },
   preview: {

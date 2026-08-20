@@ -33,6 +33,21 @@ const statusLabels: Record<string, string> = {
   delivered: 'تم التسليم', delivery_failed: 'تعذر التسليم', returned: 'مرتجع', cancelled: 'ملغي',
 };
 
+type AdminClassificationOption = { id: number; nameAr: string; isActive: boolean };
+
+function useAdminClassificationOptions(kind: 'teachers' | 'school-years' | 'education-types') {
+  const [items, setItems] = useState<AdminClassificationOption[]>([]);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(`/api/admin/classifications/${kind}?status=active&sort=sort`, { credentials: 'include', signal: controller.signal })
+      .then(response => response.ok ? response.json() as Promise<AdminClassificationOption[]> : [])
+      .then(setItems)
+      .catch(error => { if (error instanceof Error && error.name !== 'AbortError') setItems([]); });
+    return () => controller.abort();
+  }, [kind]);
+  return items;
+}
+
 export function AdminProductForm() {
   const { id } = useParams<{ id?: string }>();
   const productId = id ? Number(id) : 0;
@@ -49,6 +64,9 @@ export function AdminProductForm() {
   const { data: subjects } = useListSubjects();
   const { data: publishers } = useListPublishers();
   const { data: categories } = useListCategories();
+  const teachers = useAdminClassificationOptions('teachers');
+  const schoolYears = useAdminClassificationOptions('school-years');
+  const educationTypes = useAdminClassificationOptions('education-types');
   const { admin } = useAuth();
   const canManageNotices = admin?.role === 'owner' || admin?.role === 'administrator' || admin?.permissions?.includes('products.notices.manage');
   const previewNotice = useProductNotice({ id: productId || -1, nameAr: form.nameAr, customerNoticeEnabled: true, customerNoticeTitle: form.customerNoticeTitle || 'معاينة رسالة العميل', customerNoticeMessage: form.customerNoticeMessage || 'اكتب الرسالة التي ستظهر للعميل.', customerNoticeButtonText: form.customerNoticeButtonText, customerNoticeIcon: form.customerNoticeIcon, customerNoticeImageUrl: form.customerNoticeImageUrl, customerNoticeType: form.customerNoticeType as ProductNotice['customerNoticeType'], customerNoticeTrigger: 'product_open', customerNoticeDismissible: form.customerNoticeDismissible });
@@ -119,18 +137,18 @@ export function AdminProductForm() {
       <label className="space-y-2 md:col-span-2"><span>وصف مختصر</span><Textarea value={form.descriptionShort} onChange={e => setForm(v => ({ ...v, descriptionShort: e.target.value }))} /></label>
       <label className="space-y-2 md:col-span-2"><span>الوصف الكامل</span><Textarea rows={6} value={form.descriptionFull} onChange={e => setForm(v => ({ ...v, descriptionFull: e.target.value }))} /></label>
     </CardContent></Card>
-    <Card><CardHeader><CardTitle>2. التصنيف والأسعار</CardTitle></CardHeader><CardContent className="grid gap-5 md:grid-cols-2">
+    <Card><CardHeader><div className="flex flex-wrap items-center justify-between gap-3"><div><CardTitle>2. التصنيف والأسعار</CardTitle><p className="mt-1 text-sm text-muted-foreground">كل الأسماء المعروضة للعميل تُدار من صفحة التصنيفات.</p></div><Button type="button" variant="outline" size="sm" asChild><Link href="/admin/classifications">إدارة القوائم</Link></Button></div></CardHeader><CardContent className="grid gap-5 md:grid-cols-2">
       <AdminProductSelect label="المرحلة الدراسية" value={form.stageId} items={stages} onChange={stageId => setForm(v => ({ ...v, stageId, gradeId: '' }))} />
       <AdminProductSelect label="الصف الدراسي" value={form.gradeId} items={grades} onChange={gradeId => setForm(v => ({ ...v, gradeId }))} />
       <AdminProductSelect label="المادة" value={form.subjectId} items={subjects} onChange={subjectId => setForm(v => ({ ...v, subjectId }))} />
       <AdminProductSelect label="دار النشر" value={form.publisherId} items={publishers} onChange={publisherId => setForm(v => ({ ...v, publisherId }))} />
       <AdminProductSelect label="التصنيف" value={form.categoryId} items={categories} onChange={categoryId => setForm(v => ({ ...v, categoryId }))} />
-      <label className="space-y-2"><span>نوع التعليم</span><Select value={form.educationType || 'none'} onValueChange={educationType => setForm(v => ({ ...v, educationType: educationType === 'none' ? '' : educationType }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">غير محدد</SelectItem><SelectItem value="عربي">عربي</SelectItem><SelectItem value="لغات">لغات</SelectItem><SelectItem value="أزهر">أزهر</SelectItem></SelectContent></Select></label>
+      <AdminOptionSelect label="نوع التعليم" value={form.educationType} items={educationTypes} onChange={educationType => setForm(v => ({ ...v, educationType }))} />
       <label className="space-y-2"><span>السعر بالجنيه *</span><Input type="number" min="0.01" step="0.01" value={form.price} onChange={e => setForm(v => ({ ...v, price: e.target.value }))} /></label>
       <label className="space-y-2"><span>السعر القديم</span><Input type="number" min="0" value={form.oldPrice} onChange={e => setForm(v => ({ ...v, oldPrice: e.target.value }))} /></label>
       <label className="space-y-2"><span>سعر الشراء</span><Input type="number" min="0" value={form.purchasePrice} onChange={e => setForm(v => ({ ...v, purchasePrice: e.target.value }))} /></label>
-      <label className="space-y-2"><span>المؤلف أو المدرس</span><Input value={form.author} onChange={e => setForm(v => ({ ...v, author: e.target.value }))} /></label>
-      <label className="space-y-2"><span>السنة الدراسية</span><Input value={form.schoolYear} onChange={e => setForm(v => ({ ...v, schoolYear: e.target.value }))} /></label>
+      <AdminOptionSelect label="المؤلف أو المدرس" value={form.author} items={teachers} onChange={author => setForm(v => ({ ...v, author }))} />
+      <AdminOptionSelect label="السنة الدراسية" value={form.schoolYear} items={schoolYears} onChange={schoolYear => setForm(v => ({ ...v, schoolYear }))} />
       <label className="space-y-2"><span>نوع الكتاب</span><Input value={form.bookType} onChange={e => setForm(v => ({ ...v, bookType: e.target.value }))} /></label>
       <label className="space-y-2"><span>الطبعة</span><Input value={form.edition} onChange={e => setForm(v => ({ ...v, edition: e.target.value }))} /></label>
     </CardContent></Card>
@@ -174,6 +192,11 @@ export function AdminProductForm() {
 
 function AdminProductSelect({ label, value, items, onChange }: { label: string; value: string; items?: { id: number; nameAr: string }[]; onChange: (value: string) => void }) {
   return <label className="space-y-2"><span>{label}</span><Select value={value || 'none'} onValueChange={next => onChange(next === 'none' ? '' : next)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">غير محدد</SelectItem>{items?.map(item => <SelectItem key={item.id} value={String(item.id)}>{item.nameAr}</SelectItem>)}</SelectContent></Select></label>;
+}
+
+function AdminOptionSelect({ label, value, items, onChange }: { label: string; value: string; items: AdminClassificationOption[]; onChange: (value: string) => void }) {
+  const values = items.some(item => item.nameAr === value) || !value ? items : [{ id: -1, nameAr: value, isActive: false }, ...items];
+  return <label className="space-y-2"><span>{label}</span><Select value={value || 'none'} onValueChange={next => onChange(next === 'none' ? '' : next)}><SelectTrigger><SelectValue placeholder="اختر من القائمة المُدارة" /></SelectTrigger><SelectContent><SelectItem value="none">غير محدد</SelectItem>{values.map(item => <SelectItem key={`${item.id}-${item.nameAr}`} value={item.nameAr}>{item.nameAr}{!item.isActive ? ' (قيمة قديمة)' : ''}</SelectItem>)}</SelectContent></Select></label>;
 }
 
 export function AdminOrders() {
