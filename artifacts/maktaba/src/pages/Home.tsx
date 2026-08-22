@@ -100,7 +100,7 @@ function CourierTrack({ reverse = false }: { reverse?: boolean }) {
       <span className="delivery-speed-lines" />
       <span className="delivery-dust delivery-dust-one" />
       <span className="delivery-dust delivery-dust-two" />
-      <img src="/brand/library-delivery-rider.png" alt="" width="1536" height="1024" decoding="async" className="delivery-courier-image" />
+      <img src="/brand/library-delivery-rider.webp" alt="" width="1536" height="1024" decoding="async" fetchPriority="low" className="delivery-courier-image" />
     </div>;
 }
 
