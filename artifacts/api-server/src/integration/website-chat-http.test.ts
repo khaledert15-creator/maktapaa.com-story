@@ -12,6 +12,8 @@ let dbModule: typeof import("@workspace/db");
 const testStartedAt = new Date();
 const contacts = new Map<string, { id: number; sourceId: string; pubsubToken: string; conversationId: number }>();
 const messages = new Map<string, { id: number; content: string; message_type: number; created_at: number; conversation_id: number }[]>();
+const mockConversationBase = 20_000 + Math.floor(Math.random() * 500_000);
+const mockSourcePrefix = randomUUID();
 let contactSequence = 0;
 let messageSequence = 1000;
 let rejectContactCreation = false;
@@ -42,7 +44,7 @@ before(async () => {
         let contact = contacts.get(payload.identifier);
         if (!contact) {
           contactSequence += 1;
-          contact = { id: contactSequence, sourceId: `source-${contactSequence}`, pubsubToken: `pubsub-${contactSequence}`, conversationId: 2000 + contactSequence };
+          contact = { id: contactSequence, sourceId: `${mockSourcePrefix}-source-${contactSequence}`, pubsubToken: `pubsub-${contactSequence}`, conversationId: mockConversationBase + contactSequence };
           contacts.set(payload.identifier, contact);
           messages.set(contact.sourceId, []);
         }
@@ -145,7 +147,8 @@ test("custom chat HTTP workflow keeps guests isolated and preserves the thread a
   const guestB = await request("/api/chat/session", "", { method: "POST", body: JSON.stringify({ context: { path: "/", type: "home" } }) });
   assert.equal(guestB.response.status, 200);
   assert.notEqual(guestA.cookie, guestB.cookie);
-  const guestBMessages = await request(`/api/chat/messages?sourceId=source-1&conversationId=2001`, guestB.cookie);
+  const guestAContact = [...contacts.values()][0];
+  const guestBMessages = await request(`/api/chat/messages?sourceId=${encodeURIComponent(guestAContact.sourceId)}&conversationId=${guestAContact.conversationId}`, guestB.cookie);
   assert.equal(guestBMessages.response.status, 200);
   assert.deepEqual((await guestBMessages.response.json() as { messages: unknown[] }).messages, [], "client-supplied remote IDs cannot cross guest boundaries");
 
@@ -175,7 +178,8 @@ test("custom chat HTTP workflow keeps guests isolated and preserves the thread a
   const { db, websiteChatThreadsTable, customersTable } = dbModule;
   const { eq } = await import("drizzle-orm");
   const rows = await db.select().from(websiteChatThreadsTable);
-  const testRows = rows.filter(row => row.createdAt >= testStartedAt);
+  const ownConversationIds = new Set([...contacts.values()].map(contact => contact.conversationId));
+  const testRows = rows.filter(row => row.chatwootConversationId && ownConversationIds.has(row.chatwootConversationId));
   assert.equal(testRows.length, 2);
   assert.ok(testRows.some(row => row.customerId && row.guestKeyHash === null));
   assert.ok(testRows.every(row => !row.chatwootSourceIdEncrypted?.includes("source-")), "Chatwoot source IDs are encrypted in PostgreSQL");

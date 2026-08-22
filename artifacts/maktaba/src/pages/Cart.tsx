@@ -236,7 +236,7 @@ export default function Cart() {
                 <span className="font-semibold">{cart.subtotal} ج.م</span>
               </div>
               
-              {cart.discount && cart.discount > 0 && (
+              {Number(cart.discount) > 0 && (
                 <div className="flex justify-between text-sm text-green-600">
                   <span>خصم على المنتجات</span>
                   <span className="font-semibold">-{cart.discount} ج.م</span>
