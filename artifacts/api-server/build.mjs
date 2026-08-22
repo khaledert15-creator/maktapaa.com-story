@@ -18,6 +18,7 @@ async function buildAll() {
     entryPoints: {
       index: path.resolve(artifactDir, "src/index.ts"),
       migrate: path.resolve(artifactDir, "src/migrate.ts"),
+      seed: path.resolve(artifactDir, "src/seed.ts"),
       "bootstrap-admin": path.resolve(artifactDir, "src/scripts/bootstrap-admin.ts"),
       "provision-chatwoot-inbox": path.resolve(artifactDir, "src/scripts/provision-chatwoot-inbox.ts"),
     },
