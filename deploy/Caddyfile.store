@@ -15,12 +15,16 @@
 
 	@api path /api/*
 	handle @api {
-		reverse_proxy api:5001
+		reverse_proxy api:5001 {
+			header_up X-Forwarded-Proto https
+		}
 	}
 
 	@seo path / /product/* /category/* /publisher/* /sitemap.xml /robots.txt
 	handle @seo {
-		reverse_proxy api:5001
+		reverse_proxy api:5001 {
+			header_up X-Forwarded-Proto https
+		}
 	}
 
 	handle {
