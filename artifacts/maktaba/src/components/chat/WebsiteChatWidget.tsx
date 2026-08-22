@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
-import { AlertCircle, CheckCheck, ChevronUp, Circle, FileText, Loader2, MessageCircle, Paperclip, RefreshCw, Send, Smile, X } from "lucide-react";
+import { AlertCircle, CheckCheck, ChevronUp, Circle, FileText, Headphones, Loader2, MessageCircle, Paperclip, RefreshCw, Send, Smile, Sparkles, X } from "lucide-react";
 import { useWebsiteChat } from "@/contexts/WebsiteChatContext";
 import type { WebsiteChatMessage } from "@/lib/website-chat";
 
@@ -63,15 +63,16 @@ export default function WebsiteChatWidget() {
   const statusText = teamOnline ? "متاحون الآن" : chat.status === "connecting" || chat.status === "reconnecting" ? "جاري الاتصال…" : "غير متصل — اترك رسالة";
 
   return (
-    <div dir="rtl" className="fixed bottom-[5.25rem] left-3 z-[70] md:bottom-6 md:left-6">
+    <div dir="rtl" className="fixed bottom-40 left-4 z-[70] md:bottom-28 md:left-6">
       {chat.isOpen && (
-        <div ref={panelRef} role="dialog" aria-modal="false" aria-label="دردشة مكتبة دوت كوم" className="fixed inset-x-2 bottom-[calc(5.1rem+env(safe-area-inset-bottom))] top-[max(.75rem,env(safe-area-inset-top))] flex flex-col overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,.24)] sm:inset-auto sm:bottom-[5.4rem] sm:left-5 sm:top-auto sm:h-[min(680px,calc(100dvh-8rem))] sm:w-[390px]">
-          <header className="relative overflow-hidden bg-slate-950 px-5 pb-5 pt-4 text-white">
-            <div className="absolute -left-8 -top-10 h-32 w-32 rounded-full bg-sky-500/30 blur-2xl" />
+        <div ref={panelRef} role="dialog" aria-modal="false" aria-label="دردشة مكتبة دوت كوم" className="fixed inset-x-2 bottom-40 top-3 flex origin-bottom-left animate-in flex-col overflow-hidden rounded-[1.75rem] border border-sky-100 bg-white shadow-[0_28px_90px_rgba(15,23,42,.28)] duration-300 fade-in zoom-in-95 slide-in-from-bottom-4 sm:inset-auto sm:bottom-44 sm:left-5 sm:top-auto sm:h-[min(680px,calc(100dvh-12rem))] sm:w-[400px]">
+          <header className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950 px-5 pb-5 pt-4 text-white">
+            <div className="absolute -left-8 -top-10 h-32 w-32 animate-pulse rounded-full bg-sky-500/30 blur-2xl motion-reduce:animate-none" />
+            <div className="absolute -bottom-10 -right-8 h-28 w-28 rounded-full bg-cyan-400/10 blur-2xl" />
             <div className="relative flex items-start justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="grid h-11 w-11 place-items-center rounded-2xl bg-sky-500 shadow-lg shadow-sky-950/30"><MessageCircle className="h-6 w-6" /></div>
-                <div><h2 className="font-black">{chat.config?.title}</h2><p className="mt-1 flex items-center gap-1.5 text-xs text-slate-300"><Circle className={`h-2.5 w-2.5 fill-current ${teamOnline ? "text-emerald-400" : "text-amber-400"}`} />{statusText}</p></div>
+                <div className="relative grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-sky-400 to-sky-600 shadow-lg shadow-sky-950/40"><Headphones className="h-6 w-6" /><Sparkles className="absolute -right-1 -top-1 h-4 w-4 text-amber-300" /></div>
+                <div><h2 className="font-black tracking-tight">{chat.config?.title}</h2><p className="mt-1 flex items-center gap-1.5 text-xs text-slate-300"><span className="relative flex h-2.5 w-2.5"><span className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-70 motion-reduce:animate-none ${teamOnline ? "bg-emerald-400" : "bg-amber-400"}`} /><Circle className={`relative h-2.5 w-2.5 fill-current ${teamOnline ? "text-emerald-400" : "text-amber-400"}`} /></span>{statusText}</p></div>
               </div>
               <button type="button" onClick={chat.closeChat} aria-label="إغلاق المحادثة" className="rounded-xl p-2 text-slate-300 transition hover:bg-white/10 hover:text-white"><X className="h-5 w-5" /></button>
             </div>
@@ -82,10 +83,10 @@ export default function WebsiteChatWidget() {
               <div className="grid h-full place-items-center text-center"><div className="max-w-[250px]"><AlertCircle className="mx-auto mb-3 h-9 w-9 text-amber-500" /><p className="font-bold text-slate-800">{chat.error}</p><p className="mt-2 text-xs leading-6 text-slate-500">يمكنك متابعة التصفح، ولن يؤثر تعطل الدردشة على الموقع.</p><button onClick={chat.retry} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white"><RefreshCw className="h-4 w-4" /> إعادة المحاولة</button></div></div>
             ) : (
               <div className="space-y-3">
-                <div className="mx-auto max-w-[90%] rounded-2xl rounded-tr-md border border-sky-100 bg-sky-50 p-3 text-sm leading-6 text-slate-700"><strong className="mb-1 block text-slate-950">فريق مكتبة دوت كوم</strong>{chat.config?.greeting}</div>
+                <div className="mx-auto max-w-[90%] animate-in rounded-2xl rounded-tr-md border border-sky-100 bg-gradient-to-br from-sky-50 to-white p-3 text-sm leading-6 text-slate-700 duration-300 fade-in slide-in-from-bottom-2"><strong className="mb-1 flex items-center gap-1.5 text-slate-950"><Sparkles className="h-4 w-4 text-sky-500" />فريق مكتبة دوت كوم</strong>{chat.config?.greeting}</div>
                 {chat.messages.length > 0 && <button type="button" disabled={chat.loadingHistory} onClick={() => void chat.loadHistory()} className="mx-auto flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold text-slate-500 hover:bg-white"><ChevronUp className="h-3.5 w-3.5" />{chat.loadingHistory ? "جاري التحميل…" : "رسائل أقدم"}</button>}
                 {chat.messages.map(message => (
-                  <div key={message.id} className={`flex ${message.direction === "customer" ? "justify-start" : "justify-end"}`}>
+                  <div key={message.id} className={`flex animate-in duration-200 fade-in slide-in-from-bottom-2 ${message.direction === "customer" ? "justify-start" : "justify-end"}`}>
                     <div className={`max-w-[84%] rounded-2xl px-3.5 py-2.5 text-sm leading-6 shadow-sm ${message.direction === "customer" ? "rounded-tr-md bg-slate-950 text-white" : message.direction === "agent" ? "rounded-tl-md border border-slate-200 bg-white text-slate-800" : "bg-amber-50 text-amber-900"}`}>
                       {message.senderName && <span className="mb-0.5 block text-[11px] font-bold text-sky-600">{message.senderName}</span>}
                       {message.text && <p className="whitespace-pre-wrap break-words">{message.text}</p>}
@@ -116,8 +117,9 @@ export default function WebsiteChatWidget() {
         </div>
       )}
 
-      <button type="button" onClick={() => chat.isOpen ? chat.closeChat() : chat.openChat()} aria-expanded={chat.isOpen} aria-label={chat.isOpen ? "إغلاق المحادثة" : "افتح دردشة الدعم"} className="group flex h-14 items-center gap-2 rounded-full bg-slate-950 px-3.5 text-white shadow-[0_12px_36px_rgba(15,23,42,.28)] transition hover:-translate-y-0.5 hover:bg-slate-900 md:h-16 md:px-4">
-        <span className="relative grid h-10 w-10 place-items-center rounded-full bg-sky-500"><MessageCircle className="h-5 w-5" />{chat.unreadCount > 0 && <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-amber-400 px-1 text-[10px] font-black text-slate-950 ring-2 ring-white">{Math.min(chat.unreadCount, 99)}</span>}</span>
+      <button type="button" onClick={() => chat.isOpen ? chat.closeChat() : chat.openChat()} aria-expanded={chat.isOpen} aria-label={chat.isOpen ? "إغلاق المحادثة" : "افتح دردشة الدعم"} className="group relative flex h-14 items-center gap-2 rounded-full border border-white/10 bg-gradient-to-l from-slate-950 to-slate-900 px-3.5 text-white shadow-[0_14px_40px_rgba(15,23,42,.34)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_48px_rgba(14,165,233,.25)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sky-300/50 motion-reduce:transform-none md:h-16 md:px-4">
+        <span className="absolute inset-0 -z-10 animate-pulse rounded-full bg-sky-400/20 blur-md motion-reduce:animate-none" />
+        <span className="relative grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-sky-400 to-sky-600 shadow-lg shadow-sky-500/30 transition duration-300 group-hover:rotate-[-8deg] group-hover:scale-105 motion-reduce:transform-none"><MessageCircle className="h-5 w-5 fill-white/10" /><span className="absolute inset-0 animate-ping rounded-full border border-sky-300/50 opacity-40 [animation-duration:2.8s] motion-reduce:animate-none" />{chat.unreadCount > 0 && <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-amber-400 px-1 text-[10px] font-black text-slate-950 ring-2 ring-white">{Math.min(chat.unreadCount, 99)}</span>}</span>
         <span className="hidden text-right text-xs font-black sm:block"><span className="block">محتاج مساعدة؟</span><span className="mt-0.5 block font-normal text-slate-300">تحدث معنا الآن</span></span>
       </button>
     </div>
