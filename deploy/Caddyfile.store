@@ -17,6 +17,7 @@
 	handle @api {
 		reverse_proxy api:5001 {
 			header_up X-Forwarded-Proto https
+			header_up Origin https://store.maktabaa.com
 		}
 	}
 
