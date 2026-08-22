@@ -1,5 +1,5 @@
 import {
-  db,
+  db, pool,
   stagesTable, gradesTable, subjectsTable, publishersTable, governoratesTable,
   productsTable, usersTable, siteSettingsTable, bannersTable, faqsTable, categoriesTable,
   productImagesTable, citiesTable, customersTable, ordersTable, orderItemsTable,
@@ -10,6 +10,15 @@ import {
 } from "@workspace/db";
 import bcrypt from "bcryptjs";
 import { and, eq, like } from "drizzle-orm";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+
+async function seedEgyptAdministrativeDivisions() {
+  const migrationsDir = process.env.MIGRATIONS_DIR ?? path.resolve(process.cwd(), "lib/db/drizzle");
+  for (const filename of ["0020_egypt_administrative_divisions.sql", "0021_remove_non_delivery_divisions.sql"]) {
+    await pool.query(await readFile(path.join(migrationsDir, filename), "utf8"));
+  }
+}
 
 async function seed() {
   if (process.env.NODE_ENV === "production" && process.env.ALLOW_PRODUCTION_DEMO_SEED !== "true") throw new Error("Demo seed is disabled in production. Use the one-time admin bootstrap command instead.");
@@ -127,6 +136,8 @@ async function seed() {
   const existingGovernorates = await db.select().from(governoratesTable);
   const govs = existingGovernorates.length ? existingGovernorates : await db.insert(governoratesTable).values(governoratesData.map(row => ({ ...row, minDeliveryDays: "minDeliveryDays" in row ? row.minDeliveryDays : Math.max(1, row.estimatedDays - 1), maxDeliveryDays: "maxDeliveryDays" in row ? row.maxDeliveryDays : row.estimatedDays }))).returning();
   console.log(`✅ ${govs.length} governorates`);
+  await seedEgyptAdministrativeDivisions();
+  console.log("✅ Egyptian cities and centres");
 
   // Default admin user
   const existing = await db.select().from(usersTable).where(eq(usersTable.email, "admin@maktaba.com"));
