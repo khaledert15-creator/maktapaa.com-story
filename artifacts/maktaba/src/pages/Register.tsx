@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -29,24 +30,37 @@ const formSchema = z.object({
 
 export default function Register() {
   const [, setLocation] = useLocation();
-  const { setCustomer } = useAuth();
+  const { customer, setCustomer } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: settings } = useGetSiteSettings({ query: { queryKey: getGetSiteSettingsQueryKey(), staleTime: 60_000 } });
   const logo = settings?.lightBackgroundLogoUrl || settings?.mainLogoUrl || settings?.logoUrl;
+  const isCompletingAccount = new URLSearchParams(window.location.search).get("complete") === "1";
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: { name: "", mobile: "", primaryPhoneHasWhatsApp: true, alternatePhone: "", alternatePhoneHasWhatsApp: false, preferredWhatsApp: "primary", email: "", password: "" },
   });
 
+  useEffect(() => {
+    if (!isCompletingAccount || !customer) return;
+    form.setValue("name", customer.name);
+    form.setValue("mobile", customer.primaryPhone || customer.mobile);
+    form.setValue("primaryPhoneHasWhatsApp", customer.primaryPhoneHasWhatsApp);
+    form.setValue("alternatePhone", customer.alternatePhone || "");
+    form.setValue("alternatePhoneHasWhatsApp", customer.alternatePhoneHasWhatsApp);
+    form.setValue("preferredWhatsApp", customer.preferredWhatsAppPhone === customer.alternatePhone ? "alternate" : customer.preferredWhatsAppPhone ? "primary" : "none");
+    form.setValue("email", customer.email || "");
+  }, [customer, form, isCompletingAccount]);
+
   const registerMutation = useRegisterCustomer({
     mutation: {
       onSuccess: (data) => {
         setCustomer(data.customer);
         queryClient.invalidateQueries({ queryKey: getGetCurrentCustomerQueryKey() });
-        toast({ title: "مرحباً بك!", description: "تم إنشاء حسابك بنجاح." });
-        setLocation("/");
+        toast({ title: isCompletingAccount ? "حسابك جاهز وآمن" : "مرحباً بك!", description: isCompletingAccount ? "يمكنك الدخول من أي جهاز ومتابعة طلباتك." : "تم إنشاء حسابك بنجاح." });
+        if (isCompletingAccount) sessionStorage.removeItem("maktaba-auto-account-order");
+        setLocation(isCompletingAccount ? "/account" : "/");
       },
       onError: () => {
         toast({ title: "خطأ", description: "حدث خطأ أو البريد/الرقم مسجل مسبقاً", variant: "destructive" });
@@ -70,8 +84,8 @@ export default function Register() {
       <Card className="w-full max-w-md shadow-lg border-border/50">
         <CardHeader className="text-center space-y-2">
           {logo && <img src={logo} alt={settings?.storeNameAr || "مكتبة دوت كوم"} className="mx-auto mb-3 max-h-16 max-w-56 object-contain" />}
-          <CardTitle className="text-2xl font-black text-primary">إنشاء حساب جديد</CardTitle>
-          <CardDescription>انضم لعائلة {settings?.storeNameAr || "مكتبة دوت كوم"}</CardDescription>
+          <CardTitle className="text-2xl font-black text-primary">{isCompletingAccount ? "تأمين حسابك" : "إنشاء حساب جديد"}</CardTitle>
+          <CardDescription>{isCompletingAccount ? "بياناتك محفوظة — أضف البريد وكلمة المرور للدخول من أي جهاز" : `انضم لعائلة ${settings?.storeNameAr || "مكتبة دوت كوم"}`}</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -133,7 +147,7 @@ export default function Register() {
                 )}
               />
               <Button type="submit" className="w-full mt-6" size="lg" disabled={registerMutation.isPending}>
-                {registerMutation.isPending ? "جاري التسجيل..." : "إنشاء الحساب"}
+                {registerMutation.isPending ? "لحظات ونجهز حسابك..." : isCompletingAccount ? "حفظ وتأمين الحساب" : "إنشاء الحساب"}
               </Button>
             </form>
           </Form>

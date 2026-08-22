@@ -156,6 +156,10 @@ router.get("/sitemap.xml", async (_req, res): Promise<void> => {
 });
 
 router.get("/robots.txt", (_req, res) => {
+  if (!config.searchIndexingEnabled) {
+    res.type("text/plain").send("User-agent: *\nDisallow: /\n");
+    return;
+  }
   res.type("text/plain").send(`User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /account\nDisallow: /checkout\nSitemap: ${absolute("/sitemap.xml")}\n`);
 });
 

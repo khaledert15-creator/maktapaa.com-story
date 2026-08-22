@@ -33,4 +33,12 @@ test("production environment validation rejects unsafe defaults and accepts comp
     EMAIL_PROVIDER: "resend", EMAIL_FROM: "no-reply@maktabaa.com", RESEND_API_KEY: "secret",
   });
   assert.equal(valid.status, 0, valid.stderr);
+
+  const isolatedStaging = validate({
+    DATABASE_URL: "postgresql://store@postgres/store", SESSION_SECRET: "s".repeat(40), CORS_ORIGIN: "https://store.maktabaa.com",
+    PUBLIC_SITE_URL: "https://store.maktabaa.com", API_URL: "https://store.maktabaa.com/api", COOKIE_DOMAIN: "store.maktabaa.com", TRUST_PROXY: "1",
+    STORAGE_PROVIDER: "local", ALLOW_LOCAL_STORAGE_IN_PRODUCTION: "true", EMAIL_PROVIDER: "disabled", ALLOW_DISABLED_EMAIL_IN_PRODUCTION: "true",
+    SEARCH_INDEXING_ENABLED: "false",
+  });
+  assert.equal(isolatedStaging.status, 0, isolatedStaging.stderr);
 });

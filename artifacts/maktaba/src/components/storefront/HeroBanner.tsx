@@ -1,5 +1,5 @@
 import type { Banner } from "@workspace/api-client-react";
-import { ChevronLeft, Sparkles } from "lucide-react";
+import { BookOpen, ChevronLeft, GraduationCap, LibraryBig, Sparkles } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -23,7 +23,7 @@ export function HeroBanner({ slide, preview = false, className }: { slide: HeroS
   const buttonAlignment = alignment === "center" ? "justify-center" : alignment === "left" ? "justify-end" : "justify-start";
 
   return (
-    <section className={cn("relative overflow-hidden bg-gradient-to-l from-slate-950 via-slate-900 to-blue-950 text-white", className)}>
+    <section className={cn("hero-motion-scene relative overflow-hidden bg-gradient-to-l from-slate-950 via-slate-900 to-blue-950 text-white", className)}>
       {slide.imageUrl && (
         <img
           key={slide.id}
@@ -35,12 +35,20 @@ export function HeroBanner({ slide, preview = false, className }: { slide: HeroS
           height={slide.imageHeight || 650}
           fetchPriority={preview ? undefined : "high"}
           decoding="async"
-          className="absolute inset-0 h-full w-full object-cover opacity-35"
+          className="hero-motion-image absolute inset-0 h-full w-full object-cover opacity-35"
         />
       )}
       <div className="absolute inset-0 bg-gradient-to-l from-slate-950/95 via-slate-900/75 to-transparent" />
+      <div className="hero-motion-aurora" aria-hidden="true" />
+      <div className="hero-motion-grid" aria-hidden="true" />
+      <div className="hero-motion-books" aria-hidden="true">
+        <span className="hero-motion-book hero-motion-book-one"><BookOpen /></span>
+        <span className="hero-motion-book hero-motion-book-two"><GraduationCap /></span>
+        <span className="hero-motion-book hero-motion-book-three"><LibraryBig /></span>
+      </div>
+      <div className="hero-motion-sparkles" aria-hidden="true">{Array.from({ length: 7 }, (_, index) => <i key={index} />)}</div>
       <div className={cn("container relative mx-auto flex min-h-[440px] items-center px-4 py-14 md:py-20", preview && "min-h-[360px]")}>
-        <div className={cn("flex max-w-2xl flex-col animate-in fade-in slide-in-from-bottom-3 duration-700", contentAlignment)}>
+        <div className={cn("hero-motion-content flex max-w-2xl flex-col animate-in fade-in slide-in-from-bottom-3 duration-700", contentAlignment)}>
           {slide.badgeText && (
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-sky-300/30 bg-sky-300/10 px-4 py-2 text-sm font-bold text-sky-200">
               <Sparkles className="h-4 w-4" />

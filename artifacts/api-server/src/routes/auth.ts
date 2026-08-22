@@ -33,14 +33,16 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   const preferredWhatsAppPhone = resolvePreferredWhatsAppPhone({ primaryPhone: mobile, primaryPhoneHasWhatsApp, alternatePhone, alternatePhoneHasWhatsApp, preferredWhatsAppPhone: input.preferredWhatsAppPhone });
   if (input.preferredWhatsAppPhone && !preferredWhatsAppPhone) { res.status(400).json({ error: "رقم واتساب المفضل يجب أن يكون رقمًا صالحًا ومحددًا عليه واتساب" }); return; }
 
-  const existing = await db.select().from(customersTable).where(eq(customersTable.primaryPhone, mobile));
-  if (existing.length > 0) {
+  const [existing] = await db.select().from(customersTable).where(eq(customersTable.primaryPhone, mobile));
+  if (existing && (existing.passwordHash || req.session.customerId !== existing.id)) {
     res.status(400).json({ error: "رقم الهاتف مسجل بالفعل" });
     return;
   }
 
   const passwordHash = await hashPassword(password);
-  const [customer] = await db.insert(customersTable).values({ name, primaryPhone: mobile, primaryPhoneHasWhatsApp, alternatePhone: alternatePhone || null, alternatePhoneHasWhatsApp, preferredWhatsAppPhone, email: email?.toLowerCase() || null, passwordHash }).returning();
+  const [customer] = existing
+    ? await db.update(customersTable).set({ name, primaryPhoneHasWhatsApp, alternatePhone: alternatePhone || null, alternatePhoneHasWhatsApp, preferredWhatsAppPhone, email: email?.toLowerCase() || null, passwordHash }).where(eq(customersTable.id, existing.id)).returning()
+    : await db.insert(customersTable).values({ name, primaryPhone: mobile, primaryPhoneHasWhatsApp, alternatePhone: alternatePhone || null, alternatePhoneHasWhatsApp, preferredWhatsAppPhone, email: email?.toLowerCase() || null, passwordHash }).returning();
 
   
   const existingCart = req.session.cart;

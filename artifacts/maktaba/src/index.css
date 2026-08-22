@@ -1099,3 +1099,144 @@
   .delivery-map-node::before { width: 3rem; height: 3rem; }
   .delivery-map-node svg { width: 1.45rem; height: 1.45rem; }
 }
+
+/* Hero: a calm educational atmosphere with depth, light and floating books. */
+.hero-motion-image {
+  animation: hero-image-breathe 18s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+.hero-motion-aurora {
+  position: absolute;
+  inset: -35%;
+  background: conic-gradient(from 90deg at 50% 50%, transparent 0 22%, rgba(14,165,233,.16) 31%, transparent 43% 67%, rgba(59,130,246,.13) 76%, transparent 86%);
+  filter: blur(55px);
+  animation: hero-aurora-turn 22s linear infinite;
+  pointer-events: none;
+}
+
+.hero-motion-grid {
+  position: absolute;
+  inset: 0;
+  opacity: .14;
+  background-image: linear-gradient(rgba(125,211,252,.13) 1px, transparent 1px), linear-gradient(90deg, rgba(125,211,252,.13) 1px, transparent 1px);
+  background-size: 58px 58px;
+  mask-image: linear-gradient(to left, #000, transparent 70%);
+  animation: hero-grid-travel 24s linear infinite;
+  pointer-events: none;
+}
+
+.hero-motion-content { animation: hero-content-arrive .85s cubic-bezier(.16,1,.3,1) both; }
+.hero-motion-content h1 { text-shadow: 0 14px 35px rgba(2,8,23,.5); }
+
+.hero-motion-books { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.hero-motion-book {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  border: 1px solid rgba(125,211,252,.18);
+  border-radius: 1rem;
+  color: rgba(186,230,253,.23);
+  background: rgba(14,165,233,.055);
+  box-shadow: inset 0 0 24px rgba(56,189,248,.05), 0 15px 35px rgba(2,8,23,.16);
+  backdrop-filter: blur(3px);
+  animation: hero-book-float 8s ease-in-out infinite;
+}
+.hero-motion-book svg { width: 1.6rem; height: 1.6rem; }
+.hero-motion-book-one { left: 8%; top: 19%; rotate: -11deg; animation-delay: -1s; }
+.hero-motion-book-two { left: 31%; bottom: 15%; rotate: 9deg; animation-delay: -4.6s; }
+.hero-motion-book-three { right: 46%; top: 12%; width: 2.7rem; height: 2.7rem; rotate: 7deg; animation-delay: -6.2s; }
+
+.hero-motion-sparkles { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.hero-motion-sparkles i { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: #bae6fd; box-shadow: 0 0 14px 4px rgba(56,189,248,.35); animation: hero-sparkle 4.8s ease-in-out infinite; }
+.hero-motion-sparkles i:nth-child(1) { left: 6%; top: 62%; animation-delay: -1s; }
+.hero-motion-sparkles i:nth-child(2) { left: 18%; top: 28%; animation-delay: -2.7s; }
+.hero-motion-sparkles i:nth-child(3) { left: 38%; top: 72%; animation-delay: -.4s; }
+.hero-motion-sparkles i:nth-child(4) { left: 48%; top: 25%; animation-delay: -3.8s; }
+.hero-motion-sparkles i:nth-child(5) { right: 12%; top: 17%; animation-delay: -1.9s; }
+.hero-motion-sparkles i:nth-child(6) { right: 5%; bottom: 16%; animation-delay: -4.3s; }
+.hero-motion-sparkles i:nth-child(7) { right: 34%; bottom: 8%; animation-delay: -2.2s; }
+
+/* Footer: restrained motion that makes the final section feel alive. */
+.footer-motion-scene { isolation: isolate; }
+.footer-motion-glow {
+  position: absolute;
+  z-index: 0;
+  width: 58rem;
+  height: 27rem;
+  right: -18rem;
+  top: -13rem;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(14,165,233,.22), rgba(37,99,235,.09) 38%, transparent 70%);
+  filter: blur(20px);
+  animation: footer-glow-drift 12s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+.footer-motion-scene::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: .24;
+  background-image: linear-gradient(115deg, transparent 44%, rgba(125,211,252,.08) 50%, transparent 56%);
+  background-size: 210% 100%;
+  animation: footer-light-sweep 13s ease-in-out infinite;
+  pointer-events: none;
+}
+.footer-motion-stars { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.footer-motion-stars i { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: rgba(186,230,253,.7); box-shadow: 0 0 10px rgba(56,189,248,.6); animation: footer-star-pulse 5s ease-in-out infinite; }
+.footer-motion-stars i:nth-child(1) { right: 8%; top: 15%; }
+.footer-motion-stars i:nth-child(2) { right: 22%; top: 67%; animation-delay: -1s; }
+.footer-motion-stars i:nth-child(3) { right: 38%; top: 24%; animation-delay: -2s; }
+.footer-motion-stars i:nth-child(4) { right: 51%; top: 77%; animation-delay: -3s; }
+.footer-motion-stars i:nth-child(5) { right: 65%; top: 18%; animation-delay: -4s; }
+.footer-motion-stars i:nth-child(6) { right: 78%; top: 70%; animation-delay: -2.4s; }
+.footer-motion-stars i:nth-child(7) { left: 7%; top: 32%; animation-delay: -.8s; }
+.footer-motion-stars i:nth-child(8) { left: 20%; top: 86%; animation-delay: -3.4s; }
+.footer-motion-stars i:nth-child(9) { left: 44%; top: 9%; animation-delay: -1.7s; }
+.footer-motion-stars i:nth-child(10) { left: 31%; top: 49%; animation-delay: -4.4s; }
+.footer-motion-icons { position: absolute; inset: 0; z-index: 0; overflow: hidden; color: rgba(125,211,252,.055); pointer-events: none; }
+.footer-motion-icons svg { position: absolute; width: 5rem; height: 5rem; animation: footer-icon-float 11s ease-in-out infinite; }
+.footer-motion-icons svg:nth-child(1) { right: 3%; bottom: 8%; rotate: -10deg; }
+.footer-motion-icons svg:nth-child(2) { right: 42%; top: 9%; width: 3rem; animation-delay: -7s; }
+.footer-motion-icons svg:nth-child(3) { left: 24%; bottom: 10%; width: 4rem; animation-delay: -4s; }
+.footer-motion-icons svg:nth-child(4) { left: 5%; top: 12%; width: 2.4rem; animation-delay: -8.5s; }
+.footer-motion-column { animation: footer-column-arrive .75s cubic-bezier(.16,1,.3,1) both; }
+.footer-motion-column:nth-child(2) { animation-delay: 90ms; }
+.footer-motion-column:nth-child(3) { animation-delay: 180ms; }
+.footer-motion-column:nth-child(4) { animation-delay: 270ms; }
+.footer-motion-logo { animation: footer-logo-float 6s ease-in-out infinite; filter: drop-shadow(0 8px 20px rgba(56,189,248,.12)); }
+.footer-motion-links a { position: relative; display: inline-flex; transition: color .25s ease, transform .25s ease; }
+.footer-motion-links a::after { content: ""; position: absolute; right: 0; bottom: -3px; width: 0; height: 1px; background: #38bdf8; transition: width .3s ease; }
+.footer-motion-links a:hover { transform: translateX(-4px); }
+.footer-motion-links a:hover::after { width: 100%; }
+.footer-social-link:hover { transform: translateY(-4px) rotate(-3deg); box-shadow: 0 10px 25px rgba(14,165,233,.2); }
+.footer-payment-note { animation: footer-note-breathe 5s ease-in-out infinite; }
+
+@keyframes hero-image-breathe { from { transform: scale(1.01); } to { transform: scale(1.075) translate3d(-.7%, -.5%, 0); } }
+@keyframes hero-aurora-turn { to { transform: rotate(360deg); } }
+@keyframes hero-grid-travel { to { background-position: 58px 58px; } }
+@keyframes hero-content-arrive { from { opacity: 0; transform: translate3d(24px, 20px, 0); } to { opacity: 1; transform: none; } }
+@keyframes hero-book-float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -16px; } }
+@keyframes hero-sparkle { 0%, 100% { opacity: .15; transform: scale(.55); } 48% { opacity: .9; transform: scale(1.25); } }
+@keyframes footer-glow-drift { to { transform: translate3d(-9rem, 4rem, 0) scale(1.15); } }
+@keyframes footer-light-sweep { 0%, 48% { background-position: 115% 0; } 75%, 100% { background-position: -105% 0; } }
+@keyframes footer-star-pulse { 0%, 100% { opacity: .12; transform: scale(.55); } 52% { opacity: .75; transform: scale(1.3); } }
+@keyframes footer-icon-float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -14px; } }
+@keyframes footer-column-arrive { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes footer-logo-float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -5px; } }
+@keyframes footer-note-breathe { 0%, 100% { box-shadow: 0 0 0 rgba(251,191,36,0); } 50% { box-shadow: 0 0 24px rgba(251,191,36,.07); } }
+
+@media (max-width: 767px) {
+  .hero-motion-book-three, .footer-motion-icons svg:nth-child(2), .footer-motion-stars i:nth-child(even) { display: none; }
+  .hero-motion-grid { opacity: .08; }
+  .footer-motion-glow { opacity: .72; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-motion-image, .hero-motion-aurora, .hero-motion-grid, .hero-motion-content, .hero-motion-book, .hero-motion-sparkles i,
+  .footer-motion-glow, .footer-motion-scene::after, .footer-motion-stars i, .footer-motion-icons svg, .footer-motion-column,
+  .footer-motion-logo, .footer-payment-note { animation: none !important; }
+}

@@ -10,9 +10,12 @@ import { rateLimit } from "../lib/rate-limit";
 import { writeAuditLog } from "../services/audit";
 import { isPostgresUniqueViolation, withUniqueOrderNumber } from "../services/order-number";
 import { calculateRequiredPayment } from "../services/manual-payments";
+import { logger } from "../lib/logger";
+import { getSheetShipments } from "../services/google-sheet-tracking";
 
 const router: IRouter = Router();
 const orderRateLimit = rateLimit({ namespace: "order-create", windowMs: 15 * 60_000, max: 20 });
+const trackingRateLimit = rateLimit({ namespace: "sheet-tracking", windowMs: 15 * 60_000, max: 30 });
 const orderCreateSchema = z.object({ customerName: z.string().trim().min(2).max(200), mobile: egyptianPhoneSchema, primaryPhoneHasWhatsApp: z.boolean().default(true), altMobile: optionalEgyptianPhoneSchema, alternatePhoneHasWhatsApp: z.boolean().default(false), preferredWhatsAppPhone: optionalEgyptianPhoneSchema, governorateId: z.coerce.number().int().positive(), city: z.string().trim().min(2).max(200), detailedAddress: z.string().trim().min(5).max(2000), landmark: z.string().max(500).nullable().optional(), deliveryNotes: z.string().max(2000).nullable().optional(), orderNotes: z.string().max(2000).nullable().optional(), paymentMethod: z.enum(["manual_transfer", "cash_on_delivery"]).default("manual_transfer"), paymentPlan: z.enum(["deposit_100", "full"]).nullable().optional(), transferMethod: z.enum(["instapay", "mobile_wallet"]).nullable().optional(), couponCode: z.string().trim().max(50).transform(value => value.toUpperCase()).nullable().optional(), checkoutToken: z.string().min(12).max(100).nullable().optional(), cartItems: z.array(z.object({ productId: z.coerce.number().int().positive(), quantity: z.coerce.number().int().positive().max(99) })).max(100).optional() }).superRefine((value, context) => {
   if (value.paymentMethod === "manual_transfer" && !value.paymentPlan) context.addIssue({ code: "custom", path: ["paymentPlan"], message: "اختر قيمة الدفع المطلوبة" });
   if (value.paymentMethod === "manual_transfer" && !value.transferMethod) context.addIssue({ code: "custom", path: ["transferMethod"], message: "اختر وسيلة التحويل" });
@@ -109,7 +112,7 @@ router.post("/orders", orderRateLimit, async (req, res): Promise<void> => {
   }
 
   const [matchedCity] = await db.select().from(citiesTable).where(and(eq(citiesTable.governorateId, gov.id), eq(citiesTable.nameAr, city), eq(citiesTable.isActive, true)));
-  const customerId = req.session.customerId ? (req.session.customerId as number) : null;
+  let customerId = req.session.customerId ? (req.session.customerId as number) : null;
   if (input.paymentMethod === "manual_transfer") {
     const [activePaymentMethod] = await db.select({ id: manualPaymentSettingsTable.id }).from(manualPaymentSettingsTable).where(and(eq(manualPaymentSettingsTable.method, input.transferMethod!), eq(manualPaymentSettingsTable.isActive, true)));
     if (!activePaymentMethod) { res.status(400).json({ error: "وسيلة التحويل المختارة غير متاحة حاليًا" }); return; }
@@ -197,6 +200,47 @@ router.post("/orders", orderRateLimit, async (req, res): Promise<void> => {
   delete (req.session).cart;
   req.session.lastOrderNumber = order.orderNumber;
 
+  // A first-time guest gets a lightweight account after the order succeeds.
+  // Existing phone numbers are never auto-authenticated, which protects
+  // established accounts from being opened by someone who only knows a phone.
+  if (!customerId && !duplicateSubmission) {
+    try {
+      const [newCustomer] = await db.insert(customersTable).values({
+      name: customerName,
+      primaryPhone: mobile,
+      primaryPhoneHasWhatsApp: input.primaryPhoneHasWhatsApp,
+      alternatePhone: altMobile || null,
+      alternatePhoneHasWhatsApp: input.alternatePhoneHasWhatsApp,
+      preferredWhatsAppPhone,
+      }).onConflictDoNothing({ target: customersTable.primaryPhone }).returning();
+
+      if (newCustomer) {
+        customerId = newCustomer.id;
+        [order] = await db.update(ordersTable).set({ customerId }).where(eq(ordersTable.id, order.id)).returning();
+        req.session.customerId = customerId;
+        req.session.customerName = newCustomer.name;
+        await db.insert(addressesTable).values({
+        customerId,
+        governorateId: gov.id,
+        governorateName: gov.nameAr,
+        city,
+        detailedAddress,
+        landmark: landmark || null,
+        primaryPhone: mobile,
+        primaryPhoneHasWhatsApp: input.primaryPhoneHasWhatsApp,
+        alternatePhone: altMobile || null,
+        alternatePhoneHasWhatsApp: input.alternatePhoneHasWhatsApp,
+        preferredWhatsAppPhone,
+        isDefault: true,
+        });
+      }
+    } catch (error) {
+      // Account convenience must never turn a successful order into a failed
+      // checkout. The customer can still use the order number normally.
+      logger.warn({ error, orderId: order.id }, "Automatic customer account creation failed");
+    }
+  }
+
   const [items, history] = await Promise.all([
     db.select().from(orderItemsTable).where(eq(orderItemsTable.orderId, order.id)),
     db.select().from(orderStatusHistoryTable).where(eq(orderStatusHistoryTable.orderId, order.id)),
@@ -249,6 +293,21 @@ router.get("/orders/track", async (req, res): Promise<void> => {
     statusHistory: history.map(h => ({ status: h.status, notes: h.notes, createdAt: h.createdAt })),
     createdAt: order.createdAt,
   });
+});
+
+// Read-only shipment history from the operations Google Sheet. The sheet is
+// fetched server-side and only non-sensitive tracking fields are returned.
+router.get("/orders/shipments", trackingRateLimit, async (req, res): Promise<void> => {
+  const rawMobile = typeof req.query.mobile === "string" ? req.query.mobile : "";
+  const normalizedMobile = egyptianPhoneSchema.safeParse(rawMobile);
+  if (!normalizedMobile.success) { res.status(400).json({ error: "اكتب رقم موبايل مصري صحيح" }); return; }
+  try {
+    const shipments = await getSheetShipments(normalizedMobile.data);
+    res.json({ shipments });
+  } catch (error) {
+    logger.error({ err: error }, "Could not read tracking Google Sheet");
+    res.status(503).json({ error: "التتبع غير متاح للحظات، جرّب مرة أخرى" });
+  }
 });
 
 // My orders (authenticated customer)

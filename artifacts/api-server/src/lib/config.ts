@@ -30,6 +30,7 @@ const environmentSchema = z.object({
   S3_PUBLIC_BASE_URL: optionalUrl,
   S3_FORCE_PATH_STYLE: z.enum(["true", "false"]).default("false"),
   EMAIL_PROVIDER: z.enum(["log", "resend", "disabled"]).default("log"),
+  ALLOW_DISABLED_EMAIL_IN_PRODUCTION: z.enum(["true", "false"]).default("false"),
   EMAIL_FROM: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),
   SENTRY_DSN: optionalUrl,
@@ -38,6 +39,7 @@ const environmentSchema = z.object({
   SLOW_REQUEST_MS: positiveInteger(1_000),
   ADMIN_IDLE_TIMEOUT_MS: positiveInteger(4 * 60 * 60_000),
   ANALYTICS_ENABLED: z.enum(["true", "false"]).default("false"),
+  SEARCH_INDEXING_ENABLED: z.enum(["true", "false"]).default("true"),
   WEBSITE_CHAT_ENABLED: z.enum(["true", "false"]).default("false"),
   WEBSITE_CHAT_ENCRYPTION_KEY: z.string().optional(),
   WEBSITE_CHAT_ATTACHMENT_MAX_BYTES: positiveInteger(5 * 1024 * 1024),
@@ -81,7 +83,7 @@ const environmentSchema = z.object({
       if (!value[key]) context.addIssue({ code: "custom", path: [key], message: "is required for S3/R2 storage" });
     }
   }
-  if (production && value.EMAIL_PROVIDER !== "resend") {
+  if (production && value.EMAIL_PROVIDER !== "resend" && !(value.EMAIL_PROVIDER === "disabled" && value.ALLOW_DISABLED_EMAIL_IN_PRODUCTION === "true")) {
     context.addIssue({ code: "custom", path: ["EMAIL_PROVIDER"], message: "a production email provider is required" });
   }
   if (value.EMAIL_PROVIDER === "resend") {
@@ -138,6 +140,7 @@ export const config = {
   s3ForcePathStyle: parsed.data.S3_FORCE_PATH_STYLE === "true",
   websiteChatEnabled: parsed.data.WEBSITE_CHAT_ENABLED === "true",
   analyticsEnabled: parsed.data.ANALYTICS_ENABLED === "true",
+  searchIndexingEnabled: parsed.data.SEARCH_INDEXING_ENABLED === "true",
 };
 
 export type RuntimeConfig = typeof config;
