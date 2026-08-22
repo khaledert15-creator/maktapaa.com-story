@@ -21,6 +21,13 @@
 		}
 	}
 
+	@uploads path /uploads/*
+	handle @uploads {
+		reverse_proxy api:5001 {
+			header_up X-Forwarded-Proto https
+		}
+	}
+
 	@seo path / /product/* /category/* /publisher/* /sitemap.xml /robots.txt
 	handle @seo {
 		reverse_proxy api:5001 {
