@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useMemo } from "react";
 import type { ProductSummary } from "@workspace/api-client-react";
 import useEmblaCarousel from "embla-carousel-react";
-import { ChevronLeft, ChevronRight, Pause, Play, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "./ProductCard";
@@ -13,7 +13,6 @@ type ProductSectionProps = {
   href?: string;
   tone?: "plain" | "soft";
   autoRotate?: boolean;
-  rotationInterval?: number;
 };
 
 export function ProductSection({
@@ -23,9 +22,11 @@ export function ProductSection({
   href = "/catalog",
   tone = "plain",
   autoRotate = false,
-  rotationInterval = 5_500,
 }: ProductSectionProps) {
-  const visibleProducts = products?.slice(0, 10) || [];
+  const visibleProducts = useMemo(
+    () => autoRotate ? shuffledVisitSelection(products ?? [], 10) : (products?.slice(0, 10) ?? []),
+    [autoRotate, products],
+  );
   if (!visibleProducts.length) return null;
 
   return (
@@ -46,7 +47,7 @@ export function ProductSection({
         </div>
 
         {autoRotate && visibleProducts.length > 1 ? (
-          <AutoRotatingProductRail products={visibleProducts} rotationInterval={rotationInterval} />
+          <FreshVisitProductRail products={visibleProducts} />
         ) : (
           <div className="no-scrollbar grid snap-x snap-mandatory grid-flow-col auto-cols-[minmax(168px,72vw)] gap-3 overflow-x-auto pb-4 sm:auto-cols-[220px] sm:gap-5 lg:grid-flow-row lg:grid-cols-4 lg:overflow-visible lg:pb-0 xl:grid-cols-5">
             {visibleProducts.map(product => <div key={product.id} className="snap-start"><ProductCard product={product} /></div>)}
@@ -57,8 +58,7 @@ export function ProductSection({
   );
 }
 
-function AutoRotatingProductRail({ products, rotationInterval }: { products: ProductSummary[]; rotationInterval: number }) {
-  const rootRef = useRef<HTMLDivElement>(null);
+function FreshVisitProductRail({ products }: { products: ProductSummary[] }) {
   const [viewportRef, emblaApi] = useEmblaCarousel({
     align: "start",
     containScroll: "trimSnaps",
@@ -66,79 +66,18 @@ function AutoRotatingProductRail({ products, rotationInterval }: { products: Pro
     loop: products.length > 5,
     skipSnaps: false,
   });
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [snapCount, setSnapCount] = useState(products.length);
-  const [manualPaused, setManualPaused] = useState(false);
-  const [interactionPaused, setInteractionPaused] = useState(false);
-  const [isVisible, setIsVisible] = useState(true);
-  const [reduceMotion, setReduceMotion] = useState(false);
-  const [timerVersion, setTimerVersion] = useState(0);
-
-  const onSelect = useCallback(() => {
-    if (!emblaApi) return;
-    setSelectedIndex(emblaApi.selectedScrollSnap());
-    setSnapCount(emblaApi.scrollSnapList().length);
-  }, [emblaApi]);
-
-  useEffect(() => {
-    if (!emblaApi) return;
-    onSelect();
-    emblaApi.on("select", onSelect);
-    emblaApi.on("reInit", onSelect);
-    return () => {
-      emblaApi.off("select", onSelect);
-      emblaApi.off("reInit", onSelect);
-    };
-  }, [emblaApi, onSelect]);
-
-  useEffect(() => {
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const update = () => setReduceMotion(media.matches);
-    update();
-    media.addEventListener("change", update);
-    return () => media.removeEventListener("change", update);
-  }, []);
-
-  useEffect(() => {
-    if (!rootRef.current || typeof IntersectionObserver === "undefined") return;
-    const observer = new IntersectionObserver(([entry]) => setIsVisible(entry.isIntersecting), { threshold: 0.15 });
-    observer.observe(rootRef.current);
-    return () => observer.disconnect();
-  }, []);
-
-  const paused = manualPaused || interactionPaused || reduceMotion || !isVisible;
-
-  useEffect(() => {
-    if (!emblaApi || paused) return;
-    const timer = window.setInterval(() => emblaApi.scrollNext(), rotationInterval);
-    return () => window.clearInterval(timer);
-  }, [emblaApi, paused, rotationInterval, selectedIndex, timerVersion]);
-
   const navigate = (direction: "next" | "previous") => {
     if (!emblaApi) return;
     if (direction === "next") emblaApi.scrollNext();
     else emblaApi.scrollPrev();
-    setTimerVersion(version => version + 1);
-  };
-
-  const goTo = (index: number) => {
-    emblaApi?.scrollTo(index);
-    setTimerVersion(version => version + 1);
   };
 
   return (
     <div
-      ref={rootRef}
       className="group/rail relative"
       role="region"
-      aria-roledescription="عارض كتب متحرك"
-      aria-label="كتب تتجدد تلقائيًا"
-      onMouseEnter={() => setInteractionPaused(true)}
-      onMouseLeave={() => setInteractionPaused(false)}
-      onFocusCapture={() => setInteractionPaused(true)}
-      onBlurCapture={event => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setInteractionPaused(false);
-      }}
+      aria-roledescription="عارض كتب"
+      aria-label="تشكيلة كتب مختارة لهذه الزيارة"
     >
       <div ref={viewportRef} className="overflow-hidden rounded-3xl" dir="rtl">
         <div className="flex touch-pan-y gap-3 pb-4 sm:gap-5">
@@ -181,42 +120,18 @@ function AutoRotatingProductRail({ products, rotationInterval }: { products: Pro
         </Button>
       </div>
 
-      <div className="mt-1 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sky-100 bg-white/80 px-3 py-2.5 shadow-sm backdrop-blur sm:px-4">
-        <div className="flex items-center gap-2 text-xs font-bold text-slate-600 sm:text-sm">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-50 text-sky-600">
-            <Sparkles className="h-4 w-4" />
-          </span>
-          <span>{reduceMotion ? "التبديل التلقائي متوقف حسب إعدادات جهازك" : manualPaused ? "التبديل التلقائي متوقف" : "كتب جديدة تظهر تلقائيًا كل عدة ثوانٍ"}</span>
-        </div>
-
-        <div className="flex items-center gap-2 max-sm:ml-12">
-          <div className="hidden items-center gap-1.5 sm:flex" aria-label={`المجموعة ${selectedIndex + 1} من ${snapCount}`}>
-            {Array.from({ length: snapCount }, (_, index) => (
-              <button
-                key={index}
-                type="button"
-                aria-label={`انتقل إلى المجموعة ${index + 1}`}
-                aria-current={index === selectedIndex ? "true" : undefined}
-                onClick={() => goTo(index)}
-                className={`h-2 rounded-full transition-all ${index === selectedIndex ? "w-7 bg-sky-500" : "w-2 bg-slate-300 hover:bg-slate-400"}`}
-              />
-            ))}
-          </div>
-          {!reduceMotion && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setManualPaused(value => !value)}
-              aria-label={manualPaused ? "تشغيل التبديل التلقائي" : "إيقاف التبديل التلقائي"}
-              className="h-9 w-9 gap-1.5 rounded-full p-0 text-xs font-bold sm:w-auto sm:px-3"
-            >
-              {manualPaused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
-              <span className="hidden sm:inline">{manualPaused ? "تشغيل" : "إيقاف"}</span>
-            </Button>
-          )}
-        </div>
-      </div>
     </div>
   );
+}
+
+function shuffledVisitSelection(products: ProductSummary[], limit: number) {
+  const shuffled = [...products];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const random = globalThis.crypto?.getRandomValues
+      ? globalThis.crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32
+      : Math.random();
+    const swapIndex = Math.floor(random * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+  return shuffled.slice(0, limit);
 }

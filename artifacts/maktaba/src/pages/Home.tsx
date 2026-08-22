@@ -57,7 +57,7 @@ export default function Home() {
         {homepageLayout?.subjects.enabled && !!selectedSubjects.length && <ExploreStrip title={homepageLayout.subjects.title} subtitle={homepageLayout.subjects.subtitle || undefined} href="/stages" items={selectedSubjects.map(subject => ({ id: subject.id, label: subject.nameAr, href: `/catalog?subjectId=${subject.id}`, icon: Library }))} compact />}
       </DeliveryJourney>
 
-      <ProductSection title="الأكثر مبيعًا" subtitle="كتب اختارها طلاب كثيرون — وتتجدد أمامك تلقائيًا" products={data.bestSellers} href="/catalog?sortBy=best_selling" autoRotate />
+      <ProductSection title="الأكثر مبيعًا" subtitle="كتب اختارها طلاب كثيرون" products={data.bestSellers} href="/catalog?sortBy=best_selling" autoRotate />
       <ProductSection title="وصل حديثًا" subtitle="أحدث الإضافات من لوحة الإدارة" products={data.newArrivals} href="/catalog?sortBy=newest" tone="soft" />
       <ProductSection title="عروض تستحق" subtitle="خصومات فعلية على الأسعار الحالية" products={data.offers} href="/offers" />
       <ProductSection title="مراجعات وامتحانات" products={data.revisionBooks} href="/catalog?isRevision=true" tone="soft" />
