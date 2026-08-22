@@ -13,38 +13,36 @@ router.get("/admin/dashboard/summary", requireAdminPermission("dashboard.view"),
   weekStart.setDate(now.getDate() - 7);
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const [
-    [{ salesToday }], [{ salesWeek }], [{ salesMonth }],
-    [{ totalOrders }], [{ newOrders }], [{ pendingOrders }],
-    [{ preparingOrders }], [{ shippedOrders }], [{ deliveredOrders }],
-    [{ cancelledOrders }], [{ returnedOrders }],
-    [{ lowStockCount }], [{ outOfStockCount }],
-    [{ totalCustomers }], [{ pendingPaymentCount }],
-  ] = await Promise.all([
-    db.select({ salesToday: sql<number>`coalesce(sum(total::numeric), 0)` }).from(ordersTable).where(and(gte(ordersTable.createdAt, todayStart), eq(ordersTable.status, "delivered"))),
-    db.select({ salesWeek: sql<number>`coalesce(sum(total::numeric), 0)` }).from(ordersTable).where(and(gte(ordersTable.createdAt, weekStart), eq(ordersTable.status, "delivered"))),
-    db.select({ salesMonth: sql<number>`coalesce(sum(total::numeric), 0)` }).from(ordersTable).where(and(gte(ordersTable.createdAt, monthStart), eq(ordersTable.status, "delivered"))),
-    db.select({ totalOrders: sql<number>`count(*)::int` }).from(ordersTable),
-    db.select({ newOrders: sql<number>`count(*)::int` }).from(ordersTable).where(eq(ordersTable.status, "new")),
-    db.select({ pendingOrders: sql<number>`count(*)::int` }).from(ordersTable).where(eq(ordersTable.status, "awaiting_confirmation")),
-    db.select({ preparingOrders: sql<number>`count(*)::int` }).from(ordersTable).where(eq(ordersTable.status, "preparing")),
-    db.select({ shippedOrders: sql<number>`count(*)::int` }).from(ordersTable).where(eq(ordersTable.status, "shipped")),
-    db.select({ deliveredOrders: sql<number>`count(*)::int` }).from(ordersTable).where(eq(ordersTable.status, "delivered")),
-    db.select({ cancelledOrders: sql<number>`count(*)::int` }).from(ordersTable).where(eq(ordersTable.status, "cancelled")),
-    db.select({ returnedOrders: sql<number>`count(*)::int` }).from(ordersTable).where(eq(ordersTable.status, "returned")),
-    db.select({ lowStockCount: sql<number>`count(*)::int` }).from(productsTable).where(and(sql`${productsTable.stockQuantity} > 0 AND ${productsTable.stockQuantity} <= ${productsTable.minStockLevel}` as ReturnType<typeof eq>, eq(productsTable.status, "active"))),
-    db.select({ outOfStockCount: sql<number>`count(*)::int` }).from(productsTable).where(and(eq(productsTable.stockQuantity, 0), eq(productsTable.status, "active"))),
+  const [[orderStats], [productStats], [{ totalCustomers }], [{ pendingPaymentCount }]] = await Promise.all([
+    db.select({
+      salesToday: sql<number>`coalesce(sum(${ordersTable.total}::numeric) filter (where ${ordersTable.status} = 'delivered' and ${ordersTable.createdAt} >= ${todayStart}), 0)`,
+      salesWeek: sql<number>`coalesce(sum(${ordersTable.total}::numeric) filter (where ${ordersTable.status} = 'delivered' and ${ordersTable.createdAt} >= ${weekStart}), 0)`,
+      salesMonth: sql<number>`coalesce(sum(${ordersTable.total}::numeric) filter (where ${ordersTable.status} = 'delivered' and ${ordersTable.createdAt} >= ${monthStart}), 0)`,
+      totalOrders: sql<number>`count(*)::int`,
+      newOrders: sql<number>`count(*) filter (where ${ordersTable.status} = 'new')::int`,
+      pendingOrders: sql<number>`count(*) filter (where ${ordersTable.status} = 'awaiting_confirmation')::int`,
+      preparingOrders: sql<number>`count(*) filter (where ${ordersTable.status} = 'preparing')::int`,
+      shippedOrders: sql<number>`count(*) filter (where ${ordersTable.status} = 'shipped')::int`,
+      deliveredOrders: sql<number>`count(*) filter (where ${ordersTable.status} = 'delivered')::int`,
+      cancelledOrders: sql<number>`count(*) filter (where ${ordersTable.status} = 'cancelled')::int`,
+      returnedOrders: sql<number>`count(*) filter (where ${ordersTable.status} = 'returned')::int`,
+      avgOrderValue: sql<number>`coalesce(avg(${ordersTable.total}::numeric), 0)`,
+    }).from(ordersTable),
+    db.select({
+      lowStockCount: sql<number>`count(*) filter (where ${productsTable.status} = 'active' and ${productsTable.stockQuantity} > 0 and ${productsTable.stockQuantity} <= ${productsTable.minStockLevel})::int`,
+      outOfStockCount: sql<number>`count(*) filter (where ${productsTable.status} = 'active' and ${productsTable.stockQuantity} = 0)::int`,
+    }).from(productsTable),
     db.select({ totalCustomers: sql<number>`count(*)::int` }).from(customersTable),
-    db.select({ pendingPaymentCount: sql<number>`count(*)::int` }).from(paymentAttemptsTable).where(sql`${paymentAttemptsTable.status} in ('pending_verification', 'needs_review')`),
+    db.select({ pendingPaymentCount: sql<number>`count(*) filter (where ${paymentAttemptsTable.status} in ('pending_verification', 'needs_review'))::int` }).from(paymentAttemptsTable),
   ]);
 
-  const [avgResult] = await db.select({ avg: sql<number>`coalesce(avg(total::numeric), 0)` }).from(ordersTable);
-
   res.json({
-    salesToday: Number(salesToday), salesThisWeek: Number(salesWeek), salesThisMonth: Number(salesMonth),
-    totalOrders, newOrders, pendingOrders, preparingOrders, shippedOrders, deliveredOrders,
-    cancelledOrders, returnedOrders, lowStockCount, outOfStockCount,
-    avgOrderValue: Number(avgResult.avg), totalCustomers, pendingPaymentCount: hasAdminPermission(req, "payments.view") ? pendingPaymentCount : 0,
+    salesToday: Number(orderStats.salesToday), salesThisWeek: Number(orderStats.salesWeek), salesThisMonth: Number(orderStats.salesMonth),
+    totalOrders: orderStats.totalOrders, newOrders: orderStats.newOrders, pendingOrders: orderStats.pendingOrders,
+    preparingOrders: orderStats.preparingOrders, shippedOrders: orderStats.shippedOrders, deliveredOrders: orderStats.deliveredOrders,
+    cancelledOrders: orderStats.cancelledOrders, returnedOrders: orderStats.returnedOrders,
+    lowStockCount: productStats.lowStockCount, outOfStockCount: productStats.outOfStockCount,
+    avgOrderValue: Number(orderStats.avgOrderValue), totalCustomers, pendingPaymentCount: hasAdminPermission(req, "payments.view") ? pendingPaymentCount : 0,
   });
 });
 

@@ -31,6 +31,15 @@ services:
     networks: [database]
     security_opt: ["no-new-privileges:true"]
 
+  uploads-init:
+    image: busybox:1.37
+    restart: "no"
+    user: "0:0"
+    network_mode: none
+    command: ["chown", "-R", "10001:10001", "/app/uploads"]
+    volumes: [store_uploads:/app/uploads]
+    security_opt: ["no-new-privileges:true"]
+
   api:
     build:
       context: .
@@ -41,6 +50,7 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       migrate: { condition: service_completed_successfully }
+      uploads-init: { condition: service_completed_successfully }
     volumes: [store_uploads:/app/uploads]
     networks: [edge, database]
     read_only: true

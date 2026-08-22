@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Link } from "wouter";
 import { 
   useGetAdminDashboardSummary, 
@@ -22,8 +22,9 @@ import {
   ArrowUpRight,
   WalletCards
 } from "lucide-react";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useAuth } from "@/contexts/AuthContext";
+
+const AdminSalesChart = lazy(() => import("@/components/admin/AdminSalesChart"));
 
 export default function AdminDashboard() {
   const { admin } = useAuth();
@@ -158,42 +159,7 @@ export default function AdminDashboard() {
             {isLoadingChart ? (
               <Skeleton className="h-[300px] w-full" />
             ) : (
-              <div className="h-[300px] w-full" dir="ltr">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart
-                    data={chartData}
-                    margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
-                    <XAxis 
-                      dataKey="date" 
-                      tick={{ fill: '#888', fontSize: 12 }}
-                      tickMargin={10}
-                      tickFormatter={(val) => {
-                        const date = new Date(val);
-                        return `${date.getDate()}/${date.getMonth() + 1}`;
-                      }}
-                    />
-                    <YAxis 
-                      tick={{ fill: '#888', fontSize: 12 }}
-                      tickMargin={10}
-                      tickFormatter={(val) => `${val >= 1000 ? (val/1000).toFixed(1) + 'k' : val}`}
-                    />
-                    <Tooltip 
-                      formatter={(value: number) => [`${value} ج.م`, 'المبيعات']}
-                      labelFormatter={(label) => new Date(label as string).toLocaleDateString('ar-EG')}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="amount" 
-                      stroke="#0ea5e9" 
-                      fill="#0ea5e9" 
-                      fillOpacity={0.2} 
-                      strokeWidth={3}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
+              <Suspense fallback={<Skeleton className="h-[300px] w-full" />}><AdminSalesChart data={chartData} /></Suspense>
             )}
           </CardContent>
         </Card>
