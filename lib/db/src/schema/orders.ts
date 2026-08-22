@@ -1,4 +1,5 @@
-import { pgTable, text, serial, timestamp, integer, numeric, pgEnum, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, numeric, pgEnum, jsonb, uniqueIndex, index, boolean, check } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { productsTable } from "./products";
@@ -20,7 +21,7 @@ export const orderStatusEnum = pgEnum("order_status", [
   "cancelled",
 ]);
 
-export const paymentMethodEnum = pgEnum("payment_method", ["cash_on_delivery", "fawry"]);
+export const paymentMethodEnum = pgEnum("payment_method", ["cash_on_delivery", "fawry", "manual_transfer"]);
 
 export const paymentStatusEnum = pgEnum("payment_status", [
   "pending",
@@ -29,15 +30,28 @@ export const paymentStatusEnum = pgEnum("payment_status", [
   "failed",
   "refunded",
   "partially_refunded",
+  "awaiting_transfer",
+  "pending_verification",
+  "partially_paid",
+  "fully_paid",
+  "rejected",
+  "needs_review",
 ]);
+
+export const manualPaymentPlanEnum = pgEnum("manual_payment_plan", ["deposit_100", "full"]);
+export const manualTransferMethodEnum = pgEnum("manual_transfer_method", ["instapay", "mobile_wallet"]);
 
 export const ordersTable = pgTable("orders", {
   id: serial("id").primaryKey(),
   orderNumber: text("order_number").notNull().unique(),
+  checkoutToken: text("checkout_token").unique(),
   customerId: integer("customer_id").references(() => customersTable.id, { onDelete: "set null" }),
   customerName: text("customer_name").notNull(),
   mobile: text("mobile").notNull(),
+  primaryPhoneHasWhatsApp: boolean("primary_phone_has_whatsapp").notNull().default(true),
   altMobile: text("alt_mobile"),
+  alternatePhoneHasWhatsApp: boolean("alternate_phone_has_whatsapp").notNull().default(false),
+  preferredWhatsAppPhone: text("preferred_whatsapp_phone"),
 
   governorateId: integer("governorate_id").references(() => governoratesTable.id, { onDelete: "set null" }),
   governorateName: text("governorate_name").notNull(),
@@ -51,12 +65,22 @@ export const ordersTable = pgTable("orders", {
   status: orderStatusEnum("status").notNull().default("new"),
   paymentMethod: paymentMethodEnum("payment_method").notNull().default("cash_on_delivery"),
   paymentStatus: paymentStatusEnum("payment_status").notNull().default("pending"),
+  paymentPlan: manualPaymentPlanEnum("payment_plan"),
+  transferMethod: manualTransferMethodEnum("transfer_method"),
+  requiredPaymentAmount: numeric("required_payment_amount", { precision: 10, scale: 2 }),
+  paidAmount: numeric("paid_amount", { precision: 10, scale: 2 }).notNull().default("0"),
+  remainingAmount: numeric("remaining_amount", { precision: 10, scale: 2 }),
 
   subtotal: numeric("subtotal", { precision: 10, scale: 2 }).notNull(),
   discount: numeric("discount", { precision: 10, scale: 2 }).notNull().default("0"),
   couponDiscount: numeric("coupon_discount", { precision: 10, scale: 2 }).notNull().default("0"),
   couponCode: text("coupon_code"),
   shippingCost: numeric("shipping_cost", { precision: 10, scale: 2 }).notNull().default("0"),
+  shippingBaseCost: numeric("shipping_base_cost", { precision: 10, scale: 2 }).notNull().default("0"),
+  shippingSurcharge: numeric("shipping_surcharge", { precision: 10, scale: 2 }).notNull().default("0"),
+  shippingDiscount: numeric("shipping_discount", { precision: 10, scale: 2 }).notNull().default("0"),
+  freeShippingReason: text("free_shipping_reason"),
+  shippingRuleSnapshot: jsonb("shipping_rule_snapshot").$type<Record<string, unknown>>(),
   total: numeric("total", { precision: 10, scale: 2 }).notNull(),
 
   estimatedDeliveryDate: text("estimated_delivery_date"),
@@ -67,7 +91,19 @@ export const ordersTable = pgTable("orders", {
 
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
-});
+}, table => [
+  index("orders_status_created_idx").on(table.status, table.createdAt),
+  index("orders_customer_created_idx").on(table.customerId, table.createdAt),
+  index("orders_mobile_created_idx").on(table.mobile, table.createdAt),
+  index("orders_governorate_created_idx").on(table.governorateId, table.createdAt),
+  index("orders_created_idx").on(table.createdAt),
+  index("orders_payment_status_created_idx").on(table.paymentStatus, table.createdAt),
+  check("orders_paid_amount_non_negative", sql`${table.paidAmount} >= 0`),
+  check("orders_remaining_amount_non_negative", sql`${table.remainingAmount} IS NULL OR ${table.remainingAmount} >= 0`),
+  check("orders_required_payment_non_negative", sql`${table.requiredPaymentAmount} IS NULL OR ${table.requiredPaymentAmount} >= 0`),
+  check("orders_manual_payment_fields_valid", sql`${table.paymentMethod}::text <> 'manual_transfer' OR (${table.paymentPlan} IS NOT NULL AND ${table.transferMethod} IS NOT NULL AND ${table.requiredPaymentAmount} IS NOT NULL AND ${table.remainingAmount} IS NOT NULL)`),
+  check("orders_preferred_whatsapp_valid", sql`${table.preferredWhatsAppPhone} IS NULL OR (${table.primaryPhoneHasWhatsApp} AND ${table.preferredWhatsAppPhone} = ${table.mobile}) OR (${table.alternatePhoneHasWhatsApp} AND ${table.altMobile} IS NOT NULL AND ${table.preferredWhatsAppPhone} = ${table.altMobile})`),
+]);
 
 export const orderItemsTable = pgTable("order_items", {
   id: serial("id").primaryKey(),
@@ -79,7 +115,10 @@ export const orderItemsTable = pgTable("order_items", {
   unitPrice: numeric("unit_price", { precision: 10, scale: 2 }).notNull(),
   discount: numeric("discount", { precision: 10, scale: 2 }).notNull().default("0"),
   subtotal: numeric("subtotal", { precision: 10, scale: 2 }).notNull(),
-});
+}, table => [
+  index("order_items_order_idx").on(table.orderId),
+  index("order_items_product_order_idx").on(table.productId, table.orderId),
+]);
 
 export const orderStatusHistoryTable = pgTable("order_status_history", {
   id: serial("id").primaryKey(),
@@ -89,7 +128,7 @@ export const orderStatusHistoryTable = pgTable("order_status_history", {
   employeeId: integer("employee_id"),
   employeeName: text("employee_name"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, table => [index("order_status_history_order_created_idx").on(table.orderId, table.createdAt)]);
 
 export const cancellationRequestsTable = pgTable("cancellation_requests", {
   id: serial("id").primaryKey(),
@@ -102,7 +141,11 @@ export const cancellationRequestsTable = pgTable("cancellation_requests", {
   employeeId: integer("employee_id"),
   decidedAt: timestamp("decided_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, table => [
+  uniqueIndex("cancellation_requests_one_pending_per_order").on(table.orderId).where(sql`${table.status} = 'pending'`),
+  index("cancellation_requests_order_created_idx").on(table.orderId, table.createdAt),
+  index("cancellation_requests_customer_created_idx").on(table.customerId, table.createdAt),
+]);
 
 export const insertOrderSchema = createInsertSchema(ordersTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertOrder = z.infer<typeof insertOrderSchema>;

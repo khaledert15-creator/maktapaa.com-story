@@ -12,6 +12,13 @@ import adminOrdersRouter from "./admin/orders";
 import adminCustomersRouter from "./admin/customers";
 import adminCouponsRouter from "./admin/coupons";
 import adminReportsRouter from "./admin/reports";
+import adminShippingRouter from "./admin/shipping";
+import adminManagementRouter from "./admin/management";
+import adminReviewsRouter from "./admin/reviews";
+import manualPaymentsRouter from "./manual-payments";
+import adminPaymentsRouter from "./admin/payments";
+import adminClassificationsRouter from "./admin/classifications";
+import websiteChatRouter from "./website-chat";
 
 const router: IRouter = Router();
 
@@ -22,11 +29,18 @@ router.use(contentRouter);
 router.use(shippingRouter);
 router.use(cartRouter);
 router.use(ordersRouter);
+router.use(manualPaymentsRouter);
+router.use(websiteChatRouter);
 router.use(adminDashboardRouter);
 router.use(adminProductsRouter);
+router.use(adminClassificationsRouter);
 router.use(adminOrdersRouter);
 router.use(adminCustomersRouter);
 router.use(adminCouponsRouter);
 router.use(adminReportsRouter);
+router.use(adminShippingRouter);
+router.use(adminManagementRouter);
+router.use(adminReviewsRouter);
+router.use(adminPaymentsRouter);
 
 export default router;

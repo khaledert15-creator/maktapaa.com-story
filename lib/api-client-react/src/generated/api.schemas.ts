@@ -19,6 +19,12 @@ export interface CustomerRegisterInput {
   /** @nullable */
   email?: string | null;
   mobile: string;
+  primaryPhoneHasWhatsApp?: boolean;
+  /** @nullable */
+  alternatePhone?: string | null;
+  alternatePhoneHasWhatsApp?: boolean;
+  /** @nullable */
+  preferredWhatsAppPhone?: string | null;
   password: string;
 }
 
@@ -28,6 +34,13 @@ export interface Customer {
   /** @nullable */
   email?: string | null;
   mobile: string;
+  primaryPhone: string;
+  primaryPhoneHasWhatsApp: boolean;
+  /** @nullable */
+  alternatePhone?: string | null;
+  alternatePhoneHasWhatsApp: boolean;
+  /** @nullable */
+  preferredWhatsAppPhone?: string | null;
   isBlocked?: boolean;
   createdAt: string;
 }
@@ -52,15 +65,31 @@ export interface CustomerProfileUpdate {
   name?: string;
   email?: string;
   mobile?: string;
+  primaryPhone?: string;
+  primaryPhoneHasWhatsApp?: boolean;
+  /** @nullable */
+  alternatePhone?: string | null;
+  alternatePhoneHasWhatsApp?: boolean;
+  /** @nullable */
+  preferredWhatsAppPhone?: string | null;
 }
 
 export interface Address {
   id: number;
+  governorateId?: number;
   governorate: string;
   city: string;
   detailedAddress: string;
   /** @nullable */
   landmark?: string | null;
+  /** @nullable */
+  primaryPhone?: string | null;
+  primaryPhoneHasWhatsApp?: boolean;
+  /** @nullable */
+  alternatePhone?: string | null;
+  alternatePhoneHasWhatsApp?: boolean;
+  /** @nullable */
+  preferredWhatsAppPhone?: string | null;
   isDefault?: boolean;
 }
 
@@ -69,6 +98,13 @@ export interface AddressInput {
   city: string;
   detailedAddress: string;
   landmark?: string;
+  primaryPhone?: string;
+  primaryPhoneHasWhatsApp?: boolean;
+  /** @nullable */
+  alternatePhone?: string | null;
+  alternatePhoneHasWhatsApp?: boolean;
+  /** @nullable */
+  preferredWhatsAppPhone?: string | null;
   isDefault?: boolean;
 }
 
@@ -89,13 +125,57 @@ export interface ProductSummary {
   isBestSeller?: boolean;
   isNew?: boolean;
   isFeatured?: boolean;
+  isOffer?: boolean;
+  isRevision?: boolean;
+  isBundle?: boolean;
+  freeShipping?: boolean;
+  /** @nullable */
+  freeShippingBadgeText?: string | null;
   /** @nullable */
   publisher?: string | null;
+  /** @nullable */
+  stage?: string | null;
   /** @nullable */
   grade?: string | null;
   /** @nullable */
   subject?: string | null;
+  /** @nullable */
+  category?: string | null;
+  /** @nullable */
+  educationType?: string | null;
+  /** @nullable */
+  schoolYear?: string | null;
+  /** @nullable */
+  author?: string | null;
 }
+
+/**
+ * @nullable
+ */
+export type ProductCustomerNoticeType = typeof ProductCustomerNoticeType[keyof typeof ProductCustomerNoticeType] | null;
+
+
+export const ProductCustomerNoticeType = {
+  information: 'information',
+  warning: 'warning',
+  preorder: 'preorder',
+  delayed_delivery: 'delayed_delivery',
+  custom: 'custom',
+} as const;
+
+/**
+ * @nullable
+ */
+export type ProductCustomerNoticeTrigger = typeof ProductCustomerNoticeTrigger[keyof typeof ProductCustomerNoticeTrigger] | null;
+
+
+export const ProductCustomerNoticeTrigger = {
+  product_open: 'product_open',
+  add_to_cart: 'add_to_cart',
+  buy_now: 'buy_now',
+  checkout: 'checkout',
+  first_interaction: 'first_interaction',
+} as const;
 
 export interface Product {
   id: number;
@@ -124,6 +204,10 @@ export interface Product {
   isBestSeller?: boolean;
   isNew?: boolean;
   isFeatured?: boolean;
+  isOffer?: boolean;
+  freeShipping?: boolean;
+  /** @nullable */
+  freeShippingBadgeText?: string | null;
   isRevision?: boolean;
   isBundle?: boolean;
   /** @nullable */
@@ -147,6 +231,30 @@ export interface Product {
   /** @nullable */
   avgRating?: number | null;
   reviewCount?: number;
+  /** @nullable */
+  seoTitle?: string | null;
+  /** @nullable */
+  seoDescription?: string | null;
+  customerNoticeEnabled?: boolean;
+  /** @nullable */
+  customerNoticeTitle?: string | null;
+  /** @nullable */
+  customerNoticeMessage?: string | null;
+  /** @nullable */
+  customerNoticeButtonText?: string | null;
+  /** @nullable */
+  customerNoticeIcon?: string | null;
+  /** @nullable */
+  customerNoticeImageUrl?: string | null;
+  /** @nullable */
+  customerNoticeType?: ProductCustomerNoticeType;
+  /** @nullable */
+  customerNoticeTrigger?: ProductCustomerNoticeTrigger;
+  /** @nullable */
+  customerNoticeStartAt?: string | null;
+  /** @nullable */
+  customerNoticeEndAt?: string | null;
+  customerNoticeDismissible?: boolean;
 }
 
 export interface ProductListResponse {
@@ -276,6 +384,60 @@ export interface Governorate {
   isActive: boolean;
 }
 
+export interface City {
+  id: number;
+  governorateId: number;
+  nameAr: string;
+  surcharge: number;
+  /** @nullable */
+  shippingPriceOverride?: number | null;
+}
+
+export interface CartItemInput {
+  productId: number;
+  quantity: number;
+}
+
+export interface ShippingQuoteInput {
+  governorateId: number;
+  city?: string;
+  couponCode?: string;
+  items?: CartItemInput[];
+}
+
+export type ShippingQuoteRule = typeof ShippingQuoteRule[keyof typeof ShippingQuoteRule];
+
+
+export const ShippingQuoteRule = {
+  all_products_free: 'all_products_free',
+  coupon: 'coupon',
+  governorate_threshold: 'governorate_threshold',
+  standard: 'standard',
+} as const;
+
+export type ShippingQuoteSnapshot = { [key: string]: unknown };
+
+export interface ShippingQuote {
+  baseCost: number;
+  surcharge: number;
+  discount: number;
+  finalCost: number;
+  /** @nullable */
+  freeShippingReason?: string | null;
+  rule: ShippingQuoteRule;
+  governorateId: number;
+  governorateName: string;
+  /** @nullable */
+  city?: string | null;
+  /** @nullable */
+  cityId?: number | null;
+  subtotal: number;
+  estimatedDays: number;
+  /** @nullable */
+  estimatedDeliveryText?: string | null;
+  snapshot: ShippingQuoteSnapshot;
+}
+
 export interface GovernorateInput {
   nameAr: string;
   nameEn?: string;
@@ -306,6 +468,9 @@ export interface CartItem {
   subtotal: number;
   inStock?: boolean;
   stockQuantity?: number;
+  freeShipping?: boolean;
+  /** @nullable */
+  freeShippingBadgeText?: string | null;
 }
 
 export interface Cart {
@@ -321,11 +486,8 @@ export interface Cart {
   governorateId?: number | null;
   /** @nullable */
   notes?: string | null;
-}
-
-export interface CartItemInput {
-  productId: number;
-  quantity: number;
+  /** @nullable */
+  freeShippingReason?: string | null;
 }
 
 export interface CartItemUpdate {
@@ -340,15 +502,41 @@ export type OrderInputPaymentMethod = typeof OrderInputPaymentMethod[keyof typeo
 
 
 export const OrderInputPaymentMethod = {
+  manual_transfer: 'manual_transfer',
   cash_on_delivery: 'cash_on_delivery',
-  fawry: 'fawry',
+} as const;
+
+/**
+ * @nullable
+ */
+export type OrderInputPaymentPlan = typeof OrderInputPaymentPlan[keyof typeof OrderInputPaymentPlan] | null;
+
+
+export const OrderInputPaymentPlan = {
+  deposit_100: 'deposit_100',
+  full: 'full',
+} as const;
+
+/**
+ * @nullable
+ */
+export type OrderInputTransferMethod = typeof OrderInputTransferMethod[keyof typeof OrderInputTransferMethod] | null;
+
+
+export const OrderInputTransferMethod = {
+  instapay: 'instapay',
+  mobile_wallet: 'mobile_wallet',
 } as const;
 
 export interface OrderInput {
   customerName: string;
   mobile: string;
+  primaryPhoneHasWhatsApp?: boolean;
   /** @nullable */
   altMobile?: string | null;
+  alternatePhoneHasWhatsApp?: boolean;
+  /** @nullable */
+  preferredWhatsAppPhone?: string | null;
   governorateId: number;
   city: string;
   detailedAddress: string;
@@ -360,7 +548,16 @@ export interface OrderInput {
   orderNotes?: string | null;
   paymentMethod: OrderInputPaymentMethod;
   /** @nullable */
+  paymentPlan?: OrderInputPaymentPlan;
+  /** @nullable */
+  transferMethod?: OrderInputTransferMethod;
+  /** @nullable */
   couponCode?: string | null;
+  /**
+     * @minLength 12
+     * @maxLength 100
+     */
+  checkoutToken?: string;
   cartItems?: CartItemInput[];
 }
 
@@ -382,16 +579,37 @@ export interface OrderStatusHistory {
   createdAt: string;
 }
 
+/**
+ * @nullable
+ */
+export type OrderShippingRuleSnapshot = { [key: string]: unknown } | null;
+
 export interface Order {
   id: number;
   orderNumber: string;
   status: string;
   paymentStatus: string;
   paymentMethod?: string;
+  /** @nullable */
+  paymentPlan?: string | null;
+  /** @nullable */
+  transferMethod?: string | null;
+  /** @nullable */
+  requiredPaymentAmount?: number | null;
+  paidAmount?: number;
+  /** @nullable */
+  remainingAmount?: number | null;
   customerName?: string;
   mobile?: string;
+  primaryPhone?: string;
+  primaryPhoneHasWhatsApp?: boolean;
   /** @nullable */
   altMobile?: string | null;
+  /** @nullable */
+  alternatePhone?: string | null;
+  alternatePhoneHasWhatsApp?: boolean;
+  /** @nullable */
+  preferredWhatsAppPhone?: string | null;
   governorate?: string;
   city?: string;
   detailedAddress?: string;
@@ -404,7 +622,16 @@ export interface Order {
   subtotal: number;
   discount?: number;
   couponDiscount?: number;
+  /** @nullable */
+  couponCode?: string | null;
   shippingCost: number;
+  shippingBaseCost?: number;
+  shippingSurcharge?: number;
+  shippingDiscount?: number;
+  /** @nullable */
+  freeShippingReason?: string | null;
+  /** @nullable */
+  shippingRuleSnapshot?: OrderShippingRuleSnapshot;
   total: number;
   /** @nullable */
   estimatedDeliveryDate?: string | null;
@@ -428,6 +655,14 @@ export interface OrderTracking {
   orderNumber: string;
   status: string;
   paymentMethod?: string;
+  paymentStatus?: string;
+  /** @nullable */
+  paymentPlan?: string | null;
+  /** @nullable */
+  transferMethod?: string | null;
+  paidAmount?: number;
+  /** @nullable */
+  remainingAmount?: number | null;
   /** @nullable */
   estimatedDeliveryDate?: string | null;
   /** @nullable */
@@ -471,6 +706,20 @@ export interface SiteSettings {
   /** @nullable */
   logoUrl?: string | null;
   /** @nullable */
+  mainLogoUrl?: string | null;
+  /** @nullable */
+  darkBackgroundLogoUrl?: string | null;
+  /** @nullable */
+  lightBackgroundLogoUrl?: string | null;
+  /** @nullable */
+  mobileLogoUrl?: string | null;
+  /** @nullable */
+  faviconUrl?: string | null;
+  /** @nullable */
+  adminLogoUrl?: string | null;
+  /** @nullable */
+  socialImageUrl?: string | null;
+  /** @nullable */
   whatsappNumber?: string | null;
   /** @nullable */
   phoneNumber?: string | null;
@@ -489,6 +738,12 @@ export interface SiteSettings {
   /** @nullable */
   announcementBar?: string | null;
   announcementEnabled?: boolean;
+  /** @nullable */
+  announcementLink?: string | null;
+  /** @nullable */
+  announcementStartAt?: string | null;
+  /** @nullable */
+  announcementEndAt?: string | null;
   /** @nullable */
   seoTitle?: string | null;
   /** @nullable */
@@ -509,9 +764,21 @@ export interface SiteSettingsUpdate {
   telegramUrl?: string;
   announcementBar?: string;
   announcementEnabled?: boolean;
+  announcementLink?: string;
+  announcementStartAt?: string;
+  announcementEndAt?: string;
   seoTitle?: string;
   seoDescription?: string;
 }
+
+export type BannerTextAlignment = typeof BannerTextAlignment[keyof typeof BannerTextAlignment];
+
+
+export const BannerTextAlignment = {
+  right: 'right',
+  center: 'center',
+  left: 'left',
+} as const;
 
 export interface Banner {
   id: number;
@@ -521,27 +788,123 @@ export interface Banner {
   /** @nullable */
   subtitleAr?: string | null;
   /** @nullable */
+  badgeText?: string | null;
+  /** @nullable */
+  primaryButtonText?: string | null;
+  /** @nullable */
+  primaryButtonUrl?: string | null;
+  /** @nullable */
+  secondaryButtonText?: string | null;
+  /** @nullable */
+  secondaryButtonUrl?: string | null;
+  textAlignment: BannerTextAlignment;
+  /** @nullable */
   linkUrl?: string | null;
   sortOrder: number;
   isActive: boolean;
+  /** @nullable */
+  startAt?: string | null;
+  /** @nullable */
+  endAt?: string | null;
 }
+
+export type BannerInputTextAlignment = typeof BannerInputTextAlignment[keyof typeof BannerInputTextAlignment];
+
+
+export const BannerInputTextAlignment = {
+  right: 'right',
+  center: 'center',
+  left: 'left',
+} as const;
 
 export interface BannerInput {
   imageUrl: string;
   titleAr?: string;
   subtitleAr?: string;
+  badgeText?: string;
+  primaryButtonText?: string;
+  primaryButtonUrl?: string;
+  secondaryButtonText?: string;
+  secondaryButtonUrl?: string;
+  textAlignment?: BannerInputTextAlignment;
   linkUrl?: string;
   sortOrder?: number;
   isActive?: boolean;
+  startAt?: string;
+  endAt?: string;
 }
+
+export type BannerUpdateTextAlignment = typeof BannerUpdateTextAlignment[keyof typeof BannerUpdateTextAlignment];
+
+
+export const BannerUpdateTextAlignment = {
+  right: 'right',
+  center: 'center',
+  left: 'left',
+} as const;
 
 export interface BannerUpdate {
   imageUrl?: string;
   titleAr?: string;
   subtitleAr?: string;
+  badgeText?: string;
+  primaryButtonText?: string;
+  primaryButtonUrl?: string;
+  secondaryButtonText?: string;
+  secondaryButtonUrl?: string;
+  textAlignment?: BannerUpdateTextAlignment;
   linkUrl?: string;
   sortOrder?: number;
   isActive?: boolean;
+  startAt?: string;
+  endAt?: string;
+}
+
+export interface HomepageModelLayout {
+  productId: number;
+  /** @nullable */
+  imageUrl?: string | null;
+  /** @nullable */
+  imageStorageKey?: string | null;
+  /** @nullable */
+  caption?: string | null;
+}
+
+export interface HomepageDiscoveryLayout {
+  enabled: boolean;
+  badgeText: string;
+  title: string;
+  description: string;
+  secondaryTitle: string;
+  baccalaureateTitle: string;
+  teachersTitle: string;
+  secondaryGradeIds: number[];
+  baccalaureateGradeIds: number[];
+  teacherIds: number[];
+  models: HomepageModelLayout[];
+}
+
+export interface HomepageSectionLayout {
+  enabled: boolean;
+  title: string;
+  /** @nullable */
+  subtitle?: string | null;
+  itemIds: number[];
+}
+
+export interface HomepageLayout {
+  discovery: HomepageDiscoveryLayout;
+  stages: HomepageSectionLayout;
+  grades: HomepageSectionLayout;
+  subjects: HomepageSectionLayout;
+}
+
+export interface HomepageTeacher {
+  id: number;
+  nameAr: string;
+  /** @nullable */
+  nameEn?: string | null;
+  sortOrder: number;
 }
 
 export interface HomepageContent {
@@ -550,8 +913,18 @@ export interface HomepageContent {
   bestSellers?: ProductSummary[];
   newArrivals?: ProductSummary[];
   revisionBooks?: ProductSummary[];
+  offers?: ProductSummary[];
+  bundles?: ProductSummary[];
+  freeShippingProducts?: ProductSummary[];
+  recommendedProducts?: ProductSummary[];
+  showcaseProducts?: ProductSummary[];
+  homepageLayout?: HomepageLayout;
   stages?: Stage[];
+  grades?: Grade[];
+  subjects?: Subject[];
+  categories?: Category[];
   publishers?: Publisher[];
+  teachers?: HomepageTeacher[];
   settings?: SiteSettings;
 }
 
@@ -665,6 +1038,8 @@ export interface AdminProduct {
   /** @nullable */
   oldPrice?: number | null;
   /** @nullable */
+  purchasePrice?: number | null;
+  /** @nullable */
   sku?: string | null;
   /** @nullable */
   barcode?: string | null;
@@ -681,6 +1056,8 @@ export interface AdminProduct {
   /** @nullable */
   publisherId?: number | null;
   /** @nullable */
+  categoryId?: number | null;
+  /** @nullable */
   educationType?: string | null;
   /** @nullable */
   bookType?: string | null;
@@ -688,11 +1065,25 @@ export interface AdminProduct {
   edition?: string | null;
   /** @nullable */
   schoolYear?: string | null;
+  /** @nullable */
+  author?: string | null;
   isBestSeller?: boolean;
   isFeatured?: boolean;
   isNew?: boolean;
   isRevision?: boolean;
   isBundle?: boolean;
+  isOffer?: boolean;
+  freeShipping?: boolean;
+  /** @nullable */
+  freeShippingStartAt?: string | null;
+  /** @nullable */
+  freeShippingEndAt?: string | null;
+  /** @nullable */
+  freeShippingBadgeText?: string | null;
+  /** @nullable */
+  seoTitle?: string | null;
+  /** @nullable */
+  seoDescription?: string | null;
   sortOrder?: number;
   /** @nullable */
   internalNotes?: string | null;
@@ -718,6 +1109,7 @@ export interface AdminProductInput {
   images?: string[];
   price: number;
   oldPrice?: number;
+  purchasePrice?: number;
   sku?: string;
   barcode?: string;
   status?: AdminProductInputStatus;
@@ -727,6 +1119,8 @@ export interface AdminProductInput {
   gradeId?: number;
   subjectId?: number;
   publisherId?: number;
+  categoryId?: number;
+  author?: string;
   educationType?: string;
   bookType?: string;
   edition?: string;
@@ -736,6 +1130,13 @@ export interface AdminProductInput {
   isNew?: boolean;
   isRevision?: boolean;
   isBundle?: boolean;
+  isOffer?: boolean;
+  freeShipping?: boolean;
+  freeShippingStartAt?: string;
+  freeShippingEndAt?: string;
+  freeShippingBadgeText?: string;
+  seoTitle?: string;
+  seoDescription?: string;
   internalNotes?: string;
 }
 
@@ -748,6 +1149,7 @@ export interface AdminProductUpdate {
   images?: string[];
   price?: number;
   oldPrice?: number;
+  purchasePrice?: number;
   sku?: string;
   barcode?: string;
   status?: string;
@@ -756,6 +1158,8 @@ export interface AdminProductUpdate {
   gradeId?: number;
   subjectId?: number;
   publisherId?: number;
+  categoryId?: number;
+  author?: string;
   educationType?: string;
   bookType?: string;
   edition?: string;
@@ -765,6 +1169,13 @@ export interface AdminProductUpdate {
   isNew?: boolean;
   isRevision?: boolean;
   isBundle?: boolean;
+  isOffer?: boolean;
+  freeShipping?: boolean;
+  freeShippingStartAt?: string;
+  freeShippingEndAt?: string;
+  freeShippingBadgeText?: string;
+  seoTitle?: string;
+  seoDescription?: string;
   internalNotes?: string;
 }
 
@@ -803,6 +1214,13 @@ export interface AdminOrderSummary {
   status: string;
   paymentStatus?: string;
   paymentMethod?: string;
+  /** @nullable */
+  paymentPlan?: string | null;
+  /** @nullable */
+  transferMethod?: string | null;
+  paidAmount?: number;
+  /** @nullable */
+  remainingAmount?: number | null;
   total: number;
   itemCount?: number;
   createdAt: string;
@@ -814,6 +1232,15 @@ export interface AdminOrder {
   status: string;
   paymentStatus: string;
   paymentMethod?: string;
+  /** @nullable */
+  paymentPlan?: string | null;
+  /** @nullable */
+  transferMethod?: string | null;
+  /** @nullable */
+  requiredPaymentAmount?: number | null;
+  paidAmount?: number;
+  /** @nullable */
+  remainingAmount?: number | null;
   customerName?: string;
   mobile?: string;
   /** @nullable */
@@ -966,6 +1393,7 @@ export interface DashboardSummary {
   outOfStockCount?: number;
   avgOrderValue?: number;
   totalCustomers?: number;
+  pendingPaymentCount?: number;
 }
 
 export interface SalesDataPoint {
@@ -1042,8 +1470,11 @@ stageId?: number;
 gradeId?: number;
 subjectId?: number;
 publisherId?: number;
+categoryId?: number;
 educationType?: string;
 bookType?: string;
+author?: string;
+schoolYear?: string;
 minPrice?: number;
 maxPrice?: number;
 inStock?: boolean;
@@ -1052,6 +1483,9 @@ isBestSeller?: boolean;
 isNew?: boolean;
 isRevision?: boolean;
 isBundle?: boolean;
+isOffer?: boolean;
+isFeatured?: boolean;
+freeShipping?: boolean;
 sortBy?: ListProductsSortBy;
 };
 

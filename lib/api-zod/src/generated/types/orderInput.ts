@@ -7,12 +7,18 @@
  */
 import type { CartItemInput } from './cartItemInput';
 import type { OrderInputPaymentMethod } from './orderInputPaymentMethod';
+import type { OrderInputPaymentPlan } from './orderInputPaymentPlan';
+import type { OrderInputTransferMethod } from './orderInputTransferMethod';
 
 export interface OrderInput {
   customerName: string;
   mobile: string;
+  primaryPhoneHasWhatsApp?: boolean;
   /** @nullable */
   altMobile?: string | null;
+  alternatePhoneHasWhatsApp?: boolean;
+  /** @nullable */
+  preferredWhatsAppPhone?: string | null;
   governorateId: number;
   city: string;
   detailedAddress: string;
@@ -24,6 +30,15 @@ export interface OrderInput {
   orderNotes?: string | null;
   paymentMethod: OrderInputPaymentMethod;
   /** @nullable */
+  paymentPlan?: OrderInputPaymentPlan;
+  /** @nullable */
+  transferMethod?: OrderInputTransferMethod;
+  /** @nullable */
   couponCode?: string | null;
+  /**
+     * @minLength 12
+     * @maxLength 100
+     */
+  checkoutToken?: string;
   cartItems?: CartItemInput[];
 }

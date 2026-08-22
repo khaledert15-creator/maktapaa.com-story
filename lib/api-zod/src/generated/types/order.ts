@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { OrderItem } from './orderItem';
+import type { OrderShippingRuleSnapshot } from './orderShippingRuleSnapshot';
 import type { OrderStatusHistory } from './orderStatusHistory';
 
 export interface Order {
@@ -14,10 +15,26 @@ export interface Order {
   status: string;
   paymentStatus: string;
   paymentMethod?: string;
+  /** @nullable */
+  paymentPlan?: string | null;
+  /** @nullable */
+  transferMethod?: string | null;
+  /** @nullable */
+  requiredPaymentAmount?: number | null;
+  paidAmount?: number;
+  /** @nullable */
+  remainingAmount?: number | null;
   customerName?: string;
   mobile?: string;
+  primaryPhone?: string;
+  primaryPhoneHasWhatsApp?: boolean;
   /** @nullable */
   altMobile?: string | null;
+  /** @nullable */
+  alternatePhone?: string | null;
+  alternatePhoneHasWhatsApp?: boolean;
+  /** @nullable */
+  preferredWhatsAppPhone?: string | null;
   governorate?: string;
   city?: string;
   detailedAddress?: string;
@@ -30,7 +47,16 @@ export interface Order {
   subtotal: number;
   discount?: number;
   couponDiscount?: number;
+  /** @nullable */
+  couponCode?: string | null;
   shippingCost: number;
+  shippingBaseCost?: number;
+  shippingSurcharge?: number;
+  shippingDiscount?: number;
+  /** @nullable */
+  freeShippingReason?: string | null;
+  /** @nullable */
+  shippingRuleSnapshot?: OrderShippingRuleSnapshot;
   total: number;
   /** @nullable */
   estimatedDeliveryDate?: string | null;

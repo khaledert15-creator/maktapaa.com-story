@@ -22,4 +22,5 @@ export interface DashboardSummary {
   outOfStockCount?: number;
   avgOrderValue?: number;
   totalCustomers?: number;
+  pendingPaymentCount?: number;
 }

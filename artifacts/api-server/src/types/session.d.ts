@@ -4,8 +4,12 @@ declare module "express-session" {
   interface SessionData {
     customerId?: number;
     customerName?: string;
+    lastOrderNumber?: string;
     adminId?: number;
     adminRole?: string;
+    adminPermissions?: string[];
+    adminLastActivityAt?: number;
+    websiteChatGuestId?: string;
     cart?: {
       items: { productId: number; quantity: number }[];
       couponCode?: string;

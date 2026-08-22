@@ -1,0 +1,41 @@
+{
+	admin off
+}
+
+:8080 {
+	encode zstd gzip
+	header {
+		-Server
+		X-Robots-Tag "noindex, nofollow, noarchive"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+	}
+
+	@api path /api/*
+	handle @api {
+		reverse_proxy api:5001 {
+			header_up X-Forwarded-Proto https
+			header_up Origin https://store.maktabaa.com
+		}
+	}
+
+	@uploads path /uploads/*
+	handle @uploads {
+		reverse_proxy api:5001 {
+			header_up X-Forwarded-Proto https
+		}
+	}
+
+	@seo path / /product/* /category/* /publisher/* /sitemap.xml /robots.txt
+	handle @seo {
+		reverse_proxy api:5001 {
+			header_up X-Forwarded-Proto https
+		}
+	}
+
+	handle {
+		reverse_proxy storefront:8080
+	}
+}

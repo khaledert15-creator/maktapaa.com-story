@@ -1,185 +1,511 @@
-import { useState } from "react";
+import { useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { 
-  useGetCart, 
-  useListGovernorates, 
-  useCreateOrder, 
-  OrderInputPaymentMethod 
+import { z } from "zod";
+import {
+  ArrowRight,
+  BookOpen,
+  Check,
+  MapPin,
+  ShieldCheck,
+  Truck,
+  Wallet,
+} from "lucide-react";
+import {
+  getGetCartQueryKey,
+  getCurrentCustomer,
+  getGetMyOrdersQueryKey,
+  getListCustomerAddressesQueryKey,
+  getListGovernorateCitiesQueryKey,
+  useCreateOrder,
+  useGetCart,
+  useGetShippingQuote,
+  useListCustomerAddresses,
+  useListGovernorateCities,
+  useListGovernorates,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Truck, MapPin, Wallet, ArrowRight, BookOpen } from "lucide-react";
-import { getGetCartQueryKey, getGetMyOrdersQueryKey } from "@workspace/api-client-react";
+import { Seo } from "@/components/storefront/Seo";
+import {
+  type ProductNotice,
+  useProductNotice,
+} from "@/components/storefront/ProductNoticeModal";
+import { normalizeEgyptianPhone } from "@workspace/api-zod";
+import { trackCommerceEvent } from "@/lib/analytics";
+import { getManualPaymentSettings } from "@/lib/manual-payments";
+import { GovernorateCombobox } from "@/components/storefront/GovernorateCombobox";
+import { CityCombobox } from "@/components/storefront/CityCombobox";
 
-const formSchema = z.object({
-  customerName: z.string().min(2, "الاسم يجب أن يكون حرفين على الأقل"),
-  mobile: z.string().regex(/^01[0125][0-9]{8}$/, "رقم موبايل مصري غير صحيح"),
-  altMobile: z.string().regex(/^01[0125][0-9]{8}$/, "رقم موبايل مصري غير صحيح").optional().or(z.literal("")),
-  governorateId: z.coerce.number().min(1, "يرجى اختيار المحافظة"),
-  city: z.string().min(2, "يرجى إدخال المدينة أو الحي"),
-  detailedAddress: z.string().min(5, "يرجى إدخال العنوان بالتفصيل"),
-  landmark: z.string().optional(),
-  deliveryNotes: z.string().optional(),
-  orderNotes: z.string().optional(),
-  paymentMethod: z.enum(["cash_on_delivery", "fawry"]),
+const requiredPhone = z.string().transform((value, context) => {
+  const normalized = normalizeEgyptianPhone(value);
+  if (!normalized) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "رقم موبايل مصري غير صحيح",
+    });
+    return z.NEVER;
+  }
+  return normalized;
 });
+const optionalPhone = z.string().transform((value, context) => {
+  if (!value.trim()) return "";
+  const normalized = normalizeEgyptianPhone(value);
+  if (!normalized) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "رقم موبايل مصري غير صحيح",
+    });
+    return z.NEVER;
+  }
+  return normalized;
+});
+const schema = z
+  .object({
+    customerName: z.string().trim().min(2, "اكتب الاسم الكامل"),
+    mobile: requiredPhone,
+    primaryPhoneHasWhatsApp: z.boolean(),
+    altMobile: optionalPhone,
+    alternatePhoneHasWhatsApp: z.boolean(),
+    preferredWhatsApp: z.enum(["primary", "alternate", "none"]),
+    governorateId: z.coerce.number().int().positive("اختر المحافظة"),
+    city: z.string().trim().min(2, "اختر أو اكتب المدينة"),
+    detailedAddress: z.string().trim().min(5, "اكتب العنوان بالتفصيل"),
+    landmark: z.string().optional(),
+    deliveryNotes: z.string().optional(),
+    orderNotes: z.string().optional(),
+    paymentMethod: z.literal("manual_transfer"),
+    paymentPlan: z.enum(["deposit_100", "full"]),
+    transferMethod: z.enum(["instapay", "mobile_wallet"]),
+  })
+  .superRefine((values, context) => {
+    if (
+      values.preferredWhatsApp === "primary" &&
+      !values.primaryPhoneHasWhatsApp
+    )
+      context.addIssue({
+        code: "custom",
+        path: ["preferredWhatsApp"],
+        message: "حدد أن الرقم الأساسي عليه واتساب",
+      });
+    if (
+      values.preferredWhatsApp === "alternate" &&
+      (!values.altMobile || !values.alternatePhoneHasWhatsApp)
+    )
+      context.addIssue({
+        code: "custom",
+        path: ["preferredWhatsApp"],
+        message: "اكتب الرقم البديل وحدد أنه عليه واتساب",
+      });
+  });
+type CheckoutValues = z.infer<typeof schema>;
 
 export default function Checkout() {
   const [, setLocation] = useLocation();
-  const { data: cart, isLoading: isLoadingCart } = useGetCart({ query: { retry: false } });
-  const { data: governorates } = useListGovernorates();
+  const { customer, setCustomer } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  const [selectedGovId, setSelectedGovId] = useState<number | undefined>(undefined);
-  const selectedGov = governorates?.find(g => g.id === selectedGovId);
-  const shippingCost = selectedGov?.shippingCost || 0;
-  
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const checkoutToken = useRef(
+    globalThis.crypto?.randomUUID?.() ||
+      `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  );
+  const { data: cart, isLoading } = useGetCart();
+  const { data: governorates } = useListGovernorates();
+  const { data: paymentSettings } = useQuery({
+    queryKey: ["manual-payment-settings"],
+    queryFn: getManualPaymentSettings,
+    staleTime: 30_000,
+  });
+  const { data: addresses } = useListCustomerAddresses({
+    query: {
+      queryKey: getListCustomerAddressesQueryKey(),
+      enabled: Boolean(customer),
+      retry: false,
+    },
+  });
+  const form = useForm<CheckoutValues>({
+    resolver: zodResolver(schema),
     defaultValues: {
       customerName: "",
       mobile: "",
+      primaryPhoneHasWhatsApp: true,
       altMobile: "",
+      alternatePhoneHasWhatsApp: false,
+      preferredWhatsApp: "primary",
       city: "",
       detailedAddress: "",
       landmark: "",
       deliveryNotes: "",
       orderNotes: "",
-      paymentMethod: "cash_on_delivery",
+      paymentMethod: "manual_transfer",
+      paymentPlan: "deposit_100",
+      transferMethod: "instapay",
     },
   });
+  const governorateId = form.watch("governorateId");
+  const city = form.watch("city");
+  const paymentPlan = form.watch("paymentPlan");
+  const { data: cities } = useListGovernorateCities(governorateId || 0, {
+    query: {
+      queryKey: getListGovernorateCitiesQueryKey(governorateId || 0),
+      enabled: Boolean(governorateId),
+    },
+  });
+  const quote = useGetShippingQuote();
+  const finalTotal =
+    (cart?.subtotal || 0) -
+    (cart?.couponDiscount || 0) +
+    (quote.data?.finalCost || 0);
+  const depositAmount = Math.min(finalTotal > 2000 ? 150 : 100, finalTotal);
+  const requiredNow = paymentPlan === "full" ? finalTotal : depositAmount;
+  const remaining = Math.max(0, finalTotal - requiredNow);
+  const noticeProduct = (
+    cart?.items as unknown as ProductNotice[] | undefined
+  )?.find(
+    (item) =>
+      item.customerNoticeTrigger === "checkout" ||
+      item.customerNoticeTrigger === "first_interaction",
+  );
+  const checkoutNotice = useProductNotice(noticeProduct);
 
-  const createOrderMutation = useCreateOrder({
+  useEffect(() => {
+    if (
+      paymentSettings?.length &&
+      !paymentSettings.some(
+        (item) => item.method === form.getValues("transferMethod"),
+      )
+    )
+      form.setValue("transferMethod", paymentSettings[0].method);
+  }, [paymentSettings, form]);
+  useEffect(() => {
+    if (customer) {
+      form.setValue("customerName", customer.name);
+      form.setValue("mobile", customer.primaryPhone || customer.mobile);
+      form.setValue(
+        "primaryPhoneHasWhatsApp",
+        customer.primaryPhoneHasWhatsApp,
+      );
+      form.setValue("altMobile", customer.alternatePhone || "");
+      form.setValue(
+        "alternatePhoneHasWhatsApp",
+        customer.alternatePhoneHasWhatsApp,
+      );
+      form.setValue(
+        "preferredWhatsApp",
+        resolvePreferredWhatsApp(
+          customer.preferredWhatsAppPhone,
+          customer.primaryPhone || customer.mobile,
+          customer.alternatePhone,
+        ),
+      );
+    }
+  }, [customer, form]);
+  useEffect(() => {
+    const address = addresses?.find((item) => item.isDefault);
+    if (address && !form.getValues("detailedAddress"))
+      applyAddressValues(form, address);
+  }, [addresses, form]);
+  useEffect(() => {
+    if (!governorateId || !cart?.items.length) return;
+    const timer = window.setTimeout(
+      () =>
+        quote.mutate({
+          data: {
+            governorateId,
+            city: city || undefined,
+            couponCode: cart.couponCode || undefined,
+          },
+        }),
+      250,
+    );
+    return () => window.clearTimeout(timer);
+  }, [governorateId, city, cart?.items.length, cart?.couponCode]);
+
+  const createOrder = useCreateOrder({
     mutation: {
-      onSuccess: (response) => {
+      onSuccess: async (order) => {
         queryClient.invalidateQueries({ queryKey: getGetCartQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetMyOrdersQueryKey() });
-        toast({ title: "تم تأكيد الطلب!", description: `رقم طلبك هو: ${response.orderNumber}` });
-        setLocation(`/order-confirmation/${response.orderNumber}`);
+        if (!customer) {
+          const createdCustomer = await getCurrentCustomer().catch(() => null);
+          if (createdCustomer) {
+            setCustomer(createdCustomer);
+            sessionStorage.setItem("maktaba-auto-account-order", order.orderNumber);
+          }
+        }
+        setLocation(`/order-confirmation/${order.orderNumber}`);
       },
-      onError: () => {
-        toast({ title: "خطأ", description: "حدث خطأ أثناء إنشاء الطلب، يرجى المحاولة مرة أخرى", variant: "destructive" });
-      }
-    }
+      onError: (error) =>
+        toast({
+          title: "لم يتم إنشاء الطلب",
+          description:
+            error instanceof Error
+              ? error.message
+              : "راجع البيانات ثم حاول مرة أخرى. لن يتكرر الطلب عند إعادة المحاولة.",
+          variant: "destructive",
+        }),
+    },
   });
-
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    if (!cart || cart.items.length === 0) {
-      toast({ title: "السلة فارغة", variant: "destructive" });
+  const submit = (values: CheckoutValues) => {
+    if (!cart?.items.length || !quote.data) {
+      toast({ title: "انتظر اكتمال حساب الشحن", variant: "destructive" });
       return;
     }
-
-    createOrderMutation.mutate({
-      data: {
-        ...values,
-        paymentMethod: values.paymentMethod as OrderInputPaymentMethod,
-      }
+    if (
+      !paymentSettings?.some((item) => item.method === values.transferMethod)
+    ) {
+      toast({ title: "وسيلة التحويل غير متاحة", variant: "destructive" });
+      return;
+    }
+    const { preferredWhatsApp, ...orderValues } = values;
+    trackCommerceEvent("InitiateCheckout", {
+      value: finalTotal,
+      items: cart.items.map((item) => ({
+        id: item.productId,
+        name: item.nameAr || "منتج",
+        price: item.unitPrice,
+        quantity: item.quantity,
+      })),
     });
+    checkoutNotice.request("checkout", () =>
+      createOrder.mutate({
+        data: {
+          ...orderValues,
+          altMobile: values.altMobile || null,
+          preferredWhatsAppPhone:
+            preferredWhatsApp === "primary"
+              ? values.mobile
+              : preferredWhatsApp === "alternate"
+                ? values.altMobile || null
+                : null,
+          checkoutToken: checkoutToken.current,
+          couponCode: cart.couponCode || null,
+        },
+      }),
+    );
+  };
+  const applyAddress = (id: number) => {
+    const address = addresses?.find((item) => item.id === id);
+    if (address) applyAddressValues(form, address);
   };
 
-  if (isLoadingCart) {
-    return <div className="container mx-auto p-8 text-center">جاري تحميل البيانات...</div>;
-  }
-
-  if (!cart || cart.items.length === 0) {
-    setLocation('/cart');
-    return null;
-  }
-
-  const finalTotal = cart.total + shippingCost;
+  if (isLoading)
+    return (
+      <div className="container mx-auto grid gap-8 px-4 py-10 lg:grid-cols-3">
+        <Skeleton className="h-[650px] rounded-3xl lg:col-span-2" />
+        <Skeleton className="h-[500px] rounded-3xl" />
+      </div>
+    );
+  if (!cart?.items.length)
+    return (
+      <div className="container mx-auto px-4 py-24 text-center">
+        <BookOpen className="mx-auto mb-4 h-16 w-16 text-muted-foreground/30" />
+        <h1 className="text-2xl font-black">سلتك فارغة</h1>
+        <Button className="mt-6" asChild>
+          <Link href="/catalog">ابدأ التسوق</Link>
+        </Button>
+      </div>
+    );
 
   return (
-    <div className="container mx-auto px-4 py-8 bg-muted/20 min-h-[calc(100vh-200px)]">
-      <div className="flex items-center gap-4 mb-8">
-        <Button variant="ghost" size="icon" onClick={() => setLocation('/cart')}>
-          <ArrowRight className="h-5 w-5" />
-        </Button>
-        <h1 className="text-2xl md:text-3xl font-bold text-primary">إتمام الطلب</h1>
-      </div>
-      
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="grid lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-8">
-            {/* Delivery Info */}
-            <Card className="border-border/50 shadow-sm">
-              <CardHeader className="bg-muted/30 pb-4 border-b">
-                <CardTitle className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-secondary" />
-                  بيانات التوصيل
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="grid md:grid-cols-2 gap-4">
+    <div className="min-h-screen bg-slate-50/70 py-6 sm:py-8">
+      <Seo
+        title="إتمام الطلب | مكتبة دوت كوم"
+        description="أدخل بيانات التوصيل واختر قيمة ووسيلة التحويل لتأكيد طلبك."
+      />
+      <div className="container mx-auto px-3 sm:px-4">
+        <div className="mb-6 flex items-center gap-3">
+          <Button variant="ghost" size="icon" asChild>
+            <Link href="/cart" aria-label="العودة إلى السلة">
+              <ArrowRight className="h-5 w-5" />
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-2xl font-black sm:text-3xl">إتمام الطلب</h1>
+            <p className="text-sm text-muted-foreground">
+              الحساب اختياري — يمكنك إتمام الطلب كضيف
+            </p>
+          </div>
+        </div>
+        <div className="mb-6 grid grid-cols-4 gap-2 rounded-2xl border bg-white p-3 text-center text-[11px] sm:text-sm">
+          {["بياناتك", "العنوان", "الدفع", "المراجعة"].map((label, index) => (
+            <div
+              key={label}
+              className="flex min-w-0 flex-col items-center gap-2"
+            >
+              <span className="grid h-8 w-8 place-items-center rounded-full bg-primary font-bold text-white">
+                {index + 1}
+              </span>
+              <span className="truncate font-bold">{label}</span>
+            </div>
+          ))}
+        </div>
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(submit)}
+            className="grid gap-7 lg:grid-cols-[1fr_380px]"
+          >
+            <div className="space-y-6">
+              {addresses?.length ? (
+                <Card className="rounded-2xl">
+                  <CardHeader>
+                    <CardTitle className="text-lg">عنوان محفوظ</CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex flex-wrap gap-3">
+                    {addresses.map((address) => (
+                      <button
+                        type="button"
+                        key={address.id}
+                        onClick={() => applyAddress(address.id)}
+                        className="rounded-xl border p-3 text-right text-sm transition hover:border-secondary hover:bg-sky-50"
+                      >
+                        <strong className="block">
+                          {address.governorate} - {address.city}
+                        </strong>
+                        <span className="text-muted-foreground">
+                          {address.detailedAddress}
+                        </span>
+                        {address.isDefault && (
+                          <span className="mr-2 text-xs font-bold text-secondary">
+                            الافتراضي
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </CardContent>
+                </Card>
+              ) : null}
+              <Card className="overflow-hidden rounded-2xl">
+                <CardHeader className="border-b bg-white">
+                  <CardTitle className="flex gap-2">
+                    <MapPin className="h-5 w-5 text-secondary" /> ١. بيانات
+                    العميل والعنوان
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-5 p-4 sm:grid-cols-2 sm:p-7">
+                  <Field
+                    form={form}
+                    name="customerName"
+                    label="الاسم الكامل *"
+                    placeholder="الاسم ثلاثي"
+                  />
+                  <Field
+                    form={form}
+                    name="mobile"
+                    label="رقم الموبايل الأساسي *"
+                    placeholder="01xxxxxxxxx"
+                    dir="ltr"
+                  />
                   <FormField
                     control={form.control}
-                    name="customerName"
+                    name="primaryPhoneHasWhatsApp"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center gap-3 rounded-xl border p-3">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormLabel className="!mt-0">
+                          الرقم الأساسي عليه واتساب
+                        </FormLabel>
+                      </FormItem>
+                    )}
+                  />
+                  <Field
+                    form={form}
+                    name="altMobile"
+                    label="رقم بديل (اختياري)"
+                    placeholder="اختياري"
+                    dir="ltr"
+                  />
+                  <FormField
+                    control={form.control}
+                    name="alternatePhoneHasWhatsApp"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center gap-3 rounded-xl border p-3">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormLabel className="!mt-0">
+                          الرقم البديل عليه واتساب
+                        </FormLabel>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="preferredWhatsApp"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>الاسم الكامل *</FormLabel>
-                        <FormControl><Input placeholder="الاسم ثلاثي" {...field} /></FormControl>
+                        <FormLabel>رقم واتساب المفضل</FormLabel>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="primary">
+                              الرقم الأساسي
+                            </SelectItem>
+                            <SelectItem value="alternate">
+                              الرقم البديل
+                            </SelectItem>
+                            <SelectItem value="none">لا يوجد</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="mobile"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>رقم الموبايل *</FormLabel>
-                          <FormControl><Input placeholder="01xxxxxxxxx" dir="ltr" className="text-right" {...field} /></FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="altMobile"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>رقم بديل (اختياري)</FormLabel>
-                          <FormControl><Input placeholder="01xxxxxxxxx" dir="ltr" className="text-right" {...field} /></FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
                   <FormField
                     control={form.control}
                     name="governorateId"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>المحافظة *</FormLabel>
-                        <Select 
-                          onValueChange={(val) => {
-                            field.onChange(val);
-                            setSelectedGovId(Number(val));
-                          }} 
-                          defaultValue={field.value?.toString()}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="اختر المحافظة" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {governorates?.filter(g => g.isActive).map(gov => (
-                              <SelectItem key={gov.id} value={gov.id.toString()}>{gov.nameAr}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <FormControl>
+                          <GovernorateCombobox
+                            governorates={governorates}
+                            value={field.value}
+                            onChange={(value) => {
+                              field.onChange(value);
+                              form.setValue("city", "");
+                            }}
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -189,101 +515,103 @@ export default function Checkout() {
                     name="city"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>المدينة / الحي *</FormLabel>
-                        <FormControl><Input placeholder="مثال: مدينة نصر، العباسية..." {...field} /></FormControl>
+                        <FormLabel>المدينة / المركز *</FormLabel>
+                        <FormControl>
+                          <CityCombobox
+                            cities={cities}
+                            value={field.value}
+                            onChange={field.onChange}
+                            disabled={!governorateId}
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <div className="md:col-span-2">
-                    <FormField
-                      control={form.control}
+                  <div className="sm:col-span-2">
+                    <Field
+                      form={form}
                       name="detailedAddress"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>العنوان بالتفصيل *</FormLabel>
-                          <FormControl><Input placeholder="اسم الشارع، رقم العمارة، رقم الشقة..." {...field} /></FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                      label="العنوان بالتفصيل *"
+                      placeholder="الشارع، رقم العقار، الدور، الشقة"
                     />
                   </div>
-                  <FormField
-                    control={form.control}
+                  <Field
+                    form={form}
                     name="landmark"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>أقرب علامة مميزة (اختياري)</FormLabel>
-                        <FormControl><Input placeholder="بجوار كذا..." {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    label="علامة مميزة"
+                    placeholder="بجوار..."
                   />
+                  <Field
+                    form={form}
+                    name="deliveryNotes"
+                    label="ملاحظات التوصيل"
+                    placeholder="الاتصال قبل الوصول..."
+                  />
+                </CardContent>
+              </Card>
+
+              <Card className="overflow-hidden rounded-2xl">
+                <CardHeader className="border-b">
+                  <CardTitle className="flex gap-2">
+                    <Wallet className="h-5 w-5 text-secondary" /> ٢. اختر
+                    الطريقة الأنسب لك
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-5 p-4 sm:p-6">
                   <FormField
                     control={form.control}
-                    name="deliveryNotes"
+                    name="paymentPlan"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>ملاحظات التوصيل (اختياري)</FormLabel>
-                        <FormControl><Input placeholder="مثال: الاتصال قبل الوصول بساعة" {...field} /></FormControl>
+                        <FormControl>
+                          <RadioGroup
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            className="grid gap-3 sm:grid-cols-2"
+                          >
+                            <PaymentChoice
+                              selected={field.value === "deposit_100"}
+                              value="deposit_100"
+                              title="الدفع عند الاستلام"
+                                  description={`${depositAmount.toLocaleString("ar-EG")} ج.م لتأكيد الحجز، والباقي عند وصول الكتب`}
+                              amount={depositAmount}
+                            />
+                            <PaymentChoice
+                              selected={field.value === "full"}
+                              value="full"
+                              title="دفع المبلغ كاملًا الآن"
+                                  description="بدون أي مبلغ عند الاستلام"
+                              amount={finalTotal}
+                            />
+                          </RadioGroup>
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Payment Method */}
-            <Card className="border-border/50 shadow-sm">
-              <CardHeader className="bg-muted/30 pb-4 border-b">
-                <CardTitle className="flex items-center gap-2">
-                  <Wallet className="h-5 w-5 text-secondary" />
-                  طريقة الدفع
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <FormField
-                  control={form.control}
-                  name="paymentMethod"
-                  render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          className="flex flex-col space-y-1"
-                        >
-                          <FormItem className="flex items-center space-x-3 space-x-reverse space-y-0 p-4 border rounded-md cursor-pointer hover:bg-muted/50 data-[state=checked]:border-secondary data-[state=checked]:bg-secondary/5">
-                            <FormControl>
-                              <RadioGroupItem value="cash_on_delivery" />
-                            </FormControl>
-                            <FormLabel className="font-bold flex-1 cursor-pointer">
-                              الدفع عند الاستلام (كاش)
-                            </FormLabel>
-                            <div className="bg-secondary/10 text-secondary p-2 rounded-full">
-                              <Wallet className="h-5 w-5" />
-                            </div>
-                          </FormItem>
-                          <FormItem className="flex items-center space-x-3 space-x-reverse space-y-0 p-4 border rounded-md opacity-60 cursor-not-allowed">
-                            <FormControl>
-                              <RadioGroupItem value="fawry" disabled />
-                            </FormControl>
-                            <div className="flex-1">
-                              <FormLabel className="font-bold text-muted-foreground">
-                                الدفع عبر فوري
-                              </FormLabel>
-                              <p className="text-xs text-muted-foreground mt-1">قريباً</p>
-                            </div>
-                          </FormItem>
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+                  <div className="grid gap-3 rounded-2xl bg-slate-950 p-4 text-white sm:grid-cols-3">
+                    <Amount label="إجمالي الطلب" value={finalTotal} />
+                    <Amount label="المطلوب الآن" value={requiredNow} accent />
+                    <Amount label="المتبقي عند الاستلام" value={remaining} />
+                  </div>
+                  {paymentPlan === "deposit_100" && (
+                    <p className="flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm leading-6 text-emerald-900">
+                      <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" />
+                      <span>
+                        <strong>اطمئن،</strong> مبلغ التأكيد جزء من إجمالي طلبك
+                        وليس رسومًا إضافية، والباقي عند الاستلام.
+                      </span>
+                    </p>
                   )}
-                />
-                
-                <div className="mt-6">
+                </CardContent>
+              </Card>
+
+              <Card className="overflow-hidden rounded-2xl">
+                <CardHeader className="border-b">
+                  <CardTitle>هل تحب تضيف ملاحظة؟</CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 sm:p-6">
                   <FormField
                     control={form.control}
                     name="orderNotes"
@@ -291,104 +619,280 @@ export default function Checkout() {
                       <FormItem>
                         <FormLabel>ملاحظات على الطلب (اختياري)</FormLabel>
                         <FormControl>
-                          <Textarea placeholder="أي تفاصيل أخرى تود إضافتها للطلب..." className="resize-none" {...field} />
+                          <Textarea
+                            rows={3}
+                            placeholder="أي تفاصيل تساعدنا نجهز طلبك بالشكل المناسب..."
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div>
-            <Card className="sticky top-24 border-border/50 shadow-md">
-              <CardHeader className="bg-muted/30 pb-4 border-b">
-                <CardTitle className="text-lg">ملخص الطلب</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="p-6 space-y-4">
-                  {cart.items.map(item => (
-                    <div key={item.productId} className="flex gap-3 items-center">
-                      <div className="w-12 h-16 bg-muted rounded overflow-hidden shrink-0">
-                         {item.coverImage ? (
-                            <img src={item.coverImage} alt={item.nameAr} className="w-full h-full object-cover" />
+                </CardContent>
+              </Card>
+            </div>
+            <aside>
+              <Card className="sticky top-28 overflow-hidden rounded-2xl shadow-lg">
+                <CardHeader className="border-b">
+                  <CardTitle>راجع طلبك</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="max-h-64 space-y-4 overflow-y-auto p-5">
+                    {cart.items.map((item) => (
+                      <div key={item.productId} className="flex gap-3">
+                        <div className="h-16 w-12 shrink-0 overflow-hidden rounded-lg bg-muted">
+                          {item.coverImage ? (
+                            <img
+                              src={item.coverImage}
+                              alt={item.nameAr}
+                              className="h-full w-full object-cover"
+                            />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                              <BookOpen className="h-4 w-4" />
-                            </div>
+                            <BookOpen className="h-full w-full p-3 text-muted-foreground/30" />
                           )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <strong className="line-clamp-2 text-sm">
+                            {item.nameAr}
+                          </strong>
+                          <span className="text-xs text-muted-foreground">
+                            {item.quantity} × {item.unitPrice} ج.م
+                          </span>
+                        </div>
+                        <strong className="text-sm">{item.subtotal} ج.م</strong>
                       </div>
-                      <div className="flex-1 text-sm">
-                        <div className="font-bold line-clamp-1">{item.nameAr}</div>
-                        <div className="text-muted-foreground">{item.quantity} × {item.unitPrice} ج.م</div>
-                      </div>
-                      <div className="font-bold">{item.subtotal} ج.م</div>
-                    </div>
-                  ))}
-                </div>
-                
-                <div className="p-6 bg-muted/10 border-t space-y-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">المجموع (قبل الخصم)</span>
-                    <span className="font-semibold">{cart.subtotal} ج.م</span>
+                    ))}
                   </div>
-                  
-                  {cart.discount && cart.discount > 0 && (
-                    <div className="flex justify-between text-green-600">
-                      <span>خصم المنتجات</span>
-                      <span className="font-semibold">-{cart.discount} ج.م</span>
+                  <div className="space-y-3 border-t bg-slate-50 p-5 text-sm">
+                    <Summary label="المنتجات" value={`${cart.subtotal} ج.م`} />
+                    {Boolean(cart.couponDiscount) && (
+                      <Summary
+                        label={`الكوبون ${cart.couponCode || ""}`}
+                        value={`-${cart.couponDiscount} ج.م`}
+                        green
+                      />
+                    )}
+                    <Summary
+                      label="الشحن النهائي"
+                      value={
+                        quote.data
+                          ? quote.data.finalCost === 0
+                            ? "مجانًا"
+                            : `${quote.data.finalCost} ج.م`
+                          : governorateId
+                            ? "جاري الحساب..."
+                            : "اختر المحافظة"
+                      }
+                    />
+                    {quote.data?.freeShippingReason && (
+                      <p className="rounded-lg bg-emerald-50 p-2 text-xs font-bold text-emerald-700">
+                        {quote.data.freeShippingReason}
+                      </p>
+                    )}
+                    {quote.data && (
+                      <p className="flex gap-2 text-xs text-muted-foreground">
+                        <Truck className="h-4 w-4" />{" "}
+                        {quote.data.estimatedDeliveryText ||
+                          `${quote.data.estimatedDays} أيام عمل تقريبًا`}
+                      </p>
+                    )}
+                    <div className="flex items-end justify-between border-t pt-4">
+                      <strong>المطلوب الآن</strong>
+                      <span className="text-2xl font-black text-primary">
+                        {requiredNow.toLocaleString("ar-EG")} ج.م
+                      </span>
                     </div>
-                  )}
-
-                  {cart.couponCode && (
-                    <div className="flex justify-between text-accent-foreground font-medium">
-                      <span>كود خصم ({cart.couponCode})</span>
-                      <span>-{cart.couponDiscount} ج.م</span>
-                    </div>
-                  )}
-
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground flex items-center gap-1">
-                      <Truck className="h-4 w-4" /> مصاريف الشحن
-                    </span>
-                    <span className="font-semibold">
-                      {selectedGovId ? (shippingCost === 0 ? "مجانًا" : `${shippingCost} ج.م`) : "يحدد لاحقاً"}
-                    </span>
+                    {remaining > 0 && (
+                      <Summary
+                        label="المتبقي عند الاستلام"
+                        value={`${remaining.toLocaleString("ar-EG")} ج.م`}
+                      />
+                    )}
                   </div>
-                  
-                  {selectedGovId && selectedGov && selectedGov.estimatedDays && (
-                    <div className="text-xs text-muted-foreground mt-1">
-                      مدة التوصيل المتوقعة: {selectedGov.estimatedDays} أيام عمل
-                    </div>
-                  )}
-
-                  <div className="border-t pt-3 mt-3 flex justify-between items-center">
-                    <span className="font-bold text-lg">الإجمالي النهائي</span>
-                    <div className="text-2xl font-black text-primary">
-                      {finalTotal} ج.م
-                    </div>
+                  <div className="p-5">
+                    <Button
+                      type="submit"
+                      disabled={
+                        createOrder.isPending ||
+                        quote.isPending ||
+                        !quote.data ||
+                        !paymentSettings?.length
+                      }
+                      className="h-14 w-full rounded-xl text-base sm:text-lg"
+                    >
+                      {createOrder.isPending
+                        ? "جاري تسجيل الطلب..."
+                        : "سجّل طلبي وتابع عبر واتساب"}
+                    </Button>
+                    <p className="mt-3 flex items-start justify-center gap-1 text-center text-xs text-muted-foreground">
+                      <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" /> طلبك
+                      يُسجّل أولًا، ونكمل التأكيد معك بسهولة عبر واتساب
+                    </p>
                   </div>
-                </div>
-              </CardContent>
-              <div className="p-6 pt-0 bg-muted/10">
-                <Button 
-                  type="submit" 
-                  size="lg" 
-                  className="w-full text-lg h-14" 
-                  disabled={createOrderMutation.isPending}
-                >
-                  {createOrderMutation.isPending ? "جاري التأكيد..." : "تأكيد الطلب الآن"}
-                </Button>
-                <p className="text-xs text-center text-muted-foreground mt-4">
-                  بالضغط على تأكيد الطلب، أنت توافق على شروط وأحكام مكتبة دوت كوم
-                </p>
-              </div>
-            </Card>
-          </div>
-        </form>
-      </Form>
+                </CardContent>
+              </Card>
+            </aside>
+          </form>
+        </Form>
+        {checkoutNotice.modal}
+      </div>
+    </div>
+  );
+}
+
+function applyAddressValues(
+  form: ReturnType<typeof useForm<CheckoutValues>>,
+  address: {
+    governorateId?: number | null;
+    city: string;
+    detailedAddress: string;
+    landmark?: string | null;
+    primaryPhone?: string | null;
+    primaryPhoneHasWhatsApp?: boolean;
+    alternatePhone?: string | null;
+    alternatePhoneHasWhatsApp?: boolean;
+    preferredWhatsAppPhone?: string | null;
+  },
+) {
+  if (address.governorateId)
+    form.setValue("governorateId", address.governorateId);
+  form.setValue("city", address.city);
+  form.setValue("detailedAddress", address.detailedAddress);
+  form.setValue("landmark", address.landmark || "");
+  if (address.primaryPhone) form.setValue("mobile", address.primaryPhone);
+  form.setValue(
+    "primaryPhoneHasWhatsApp",
+    address.primaryPhoneHasWhatsApp ?? true,
+  );
+  form.setValue("altMobile", address.alternatePhone || "");
+  form.setValue(
+    "alternatePhoneHasWhatsApp",
+    address.alternatePhoneHasWhatsApp ?? false,
+  );
+  if (address.preferredWhatsAppPhone)
+    form.setValue(
+      "preferredWhatsApp",
+      resolvePreferredWhatsApp(
+        address.preferredWhatsAppPhone,
+        address.primaryPhone,
+        address.alternatePhone,
+      ),
+    );
+}
+function resolvePreferredWhatsApp(
+  preferred: string | null | undefined,
+  primary: string | null | undefined,
+  alternate: string | null | undefined,
+): "primary" | "alternate" | "none" {
+  if (!preferred) return primary ? "primary" : "none";
+  return alternate && preferred === alternate
+    ? "alternate"
+    : primary && preferred === primary
+      ? "primary"
+      : "none";
+}
+function PaymentChoice({
+  selected,
+  value,
+  title,
+  description,
+  amount,
+}: {
+  selected: boolean;
+  value: "deposit_100" | "full";
+  title: string;
+  description: string;
+  amount: number;
+}) {
+  return (
+    <label
+      className={`relative flex cursor-pointer gap-3 rounded-2xl border-2 p-4 transition ${selected ? "border-secondary bg-sky-50 shadow-sm" : "border-border bg-white hover:border-slate-300"}`}
+    >
+      <RadioGroupItem className="mt-1" value={value} />
+      <div className="min-w-0">
+        <strong className="block">{title}</strong>
+        <p className="mt-1 text-xs text-muted-foreground">{description}</p>
+        <span className="mt-3 inline-flex rounded-full bg-white px-3 py-1 text-sm font-black text-primary shadow-sm">
+          {amount.toLocaleString("ar-EG")} ج.م الآن
+        </span>
+      </div>
+      {selected && (
+        <Check className="absolute left-3 top-3 h-5 w-5 text-secondary" />
+      )}
+    </label>
+  );
+}
+function Amount({
+  label,
+  value,
+  accent = false,
+}: {
+  label: string;
+  value: number;
+  accent?: boolean;
+}) {
+  return (
+    <div>
+      <span className="text-xs text-slate-400">{label}</span>
+      <strong className={`block text-lg ${accent ? "text-amber-300" : ""}`}>
+        {value.toLocaleString("ar-EG")} ج.م
+      </strong>
+    </div>
+  );
+}
+function Field({
+  form,
+  name,
+  label,
+  placeholder,
+  dir,
+}: {
+  form: ReturnType<typeof useForm<CheckoutValues>>;
+  name: keyof CheckoutValues;
+  label: string;
+  placeholder: string;
+  dir?: "ltr" | "rtl";
+}) {
+  return (
+    <FormField
+      control={form.control}
+      name={name}
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel>{label}</FormLabel>
+          <FormControl>
+            <Input
+              placeholder={placeholder}
+              dir={dir}
+              value={String(field.value ?? "")}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              name={field.name}
+              ref={field.ref}
+            />
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
+}
+function Summary({
+  label,
+  value,
+  green = false,
+}: {
+  label: string;
+  value: string;
+  green?: boolean;
+}) {
+  return (
+    <div
+      className={`flex justify-between gap-3 ${green ? "font-bold text-emerald-700" : ""}`}
+    >
+      <span>{label}</span>
+      <span className="text-left">{value}</span>
     </div>
   );
 }

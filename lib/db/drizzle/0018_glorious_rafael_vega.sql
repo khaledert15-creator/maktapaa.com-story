@@ -1,0 +1,2 @@
+ALTER TABLE "orders" DROP CONSTRAINT "orders_manual_payment_fields_valid";--> statement-breakpoint
+ALTER TABLE "orders" ADD CONSTRAINT "orders_manual_payment_fields_valid" CHECK ("orders"."payment_method"::text <> 'manual_transfer' OR ("orders"."payment_plan" IS NOT NULL AND "orders"."transfer_method" IS NOT NULL AND "orders"."required_payment_amount" IS NOT NULL AND "orders"."remaining_amount" IS NOT NULL));

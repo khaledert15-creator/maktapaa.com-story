@@ -16,10 +16,17 @@ export const HealthCheckResponse = zod.object({
 })
 
 
+export const registerCustomerBodyPrimaryPhoneHasWhatsAppDefault = true;
+export const registerCustomerBodyAlternatePhoneHasWhatsAppDefault = false;
+
 export const RegisterCustomerBody = zod.object({
   "name": zod.string(),
   "email": zod.string().nullish(),
   "mobile": zod.string(),
+  "primaryPhoneHasWhatsApp": zod.boolean().default(registerCustomerBodyPrimaryPhoneHasWhatsAppDefault),
+  "alternatePhone": zod.string().nullish(),
+  "alternatePhoneHasWhatsApp": zod.boolean().default(registerCustomerBodyAlternatePhoneHasWhatsAppDefault),
+  "preferredWhatsAppPhone": zod.string().nullish(),
   "password": zod.string()
 })
 
@@ -29,6 +36,11 @@ export const RegisterCustomerResponse = zod.object({
   "name": zod.string(),
   "email": zod.string().nullish(),
   "mobile": zod.string(),
+  "primaryPhone": zod.string(),
+  "primaryPhoneHasWhatsApp": zod.boolean(),
+  "alternatePhone": zod.string().nullish(),
+  "alternatePhoneHasWhatsApp": zod.boolean(),
+  "preferredWhatsAppPhone": zod.string().nullish(),
   "isBlocked": zod.boolean().optional(),
   "createdAt": zod.string()
 })
@@ -46,6 +58,11 @@ export const LoginCustomerResponse = zod.object({
   "name": zod.string(),
   "email": zod.string().nullish(),
   "mobile": zod.string(),
+  "primaryPhone": zod.string(),
+  "primaryPhoneHasWhatsApp": zod.boolean(),
+  "alternatePhone": zod.string().nullish(),
+  "alternatePhoneHasWhatsApp": zod.boolean(),
+  "preferredWhatsAppPhone": zod.string().nullish(),
   "isBlocked": zod.boolean().optional(),
   "createdAt": zod.string()
 })
@@ -60,6 +77,11 @@ export const GetCurrentCustomerResponse = zod.object({
   "name": zod.string(),
   "email": zod.string().nullish(),
   "mobile": zod.string(),
+  "primaryPhone": zod.string(),
+  "primaryPhoneHasWhatsApp": zod.boolean(),
+  "alternatePhone": zod.string().nullish(),
+  "alternatePhoneHasWhatsApp": zod.boolean(),
+  "preferredWhatsAppPhone": zod.string().nullish(),
   "isBlocked": zod.boolean().optional(),
   "createdAt": zod.string()
 })
@@ -104,8 +126,11 @@ export const ListProductsQueryParams = zod.object({
   "gradeId": zod.coerce.number().optional(),
   "subjectId": zod.coerce.number().optional(),
   "publisherId": zod.coerce.number().optional(),
+  "categoryId": zod.coerce.number().optional(),
   "educationType": zod.coerce.string().optional(),
   "bookType": zod.coerce.string().optional(),
+  "author": zod.coerce.string().optional(),
+  "schoolYear": zod.coerce.string().optional(),
   "minPrice": zod.coerce.number().optional(),
   "maxPrice": zod.coerce.number().optional(),
   "inStock": zod.coerce.boolean().optional(),
@@ -114,6 +139,9 @@ export const ListProductsQueryParams = zod.object({
   "isNew": zod.coerce.boolean().optional(),
   "isRevision": zod.coerce.boolean().optional(),
   "isBundle": zod.coerce.boolean().optional(),
+  "isOffer": zod.coerce.boolean().optional(),
+  "isFeatured": zod.coerce.boolean().optional(),
+  "freeShipping": zod.coerce.boolean().optional(),
   "sortBy": zod.enum(['newest', 'best_selling', 'price_asc', 'price_desc', 'discount', 'recommended']).optional()
 })
 
@@ -131,9 +159,19 @@ export const ListProductsResponse = zod.object({
   "isBestSeller": zod.boolean().optional(),
   "isNew": zod.boolean().optional(),
   "isFeatured": zod.boolean().optional(),
+  "isOffer": zod.boolean().optional(),
+  "isRevision": zod.boolean().optional(),
+  "isBundle": zod.boolean().optional(),
+  "freeShipping": zod.boolean().optional(),
+  "freeShippingBadgeText": zod.string().nullish(),
   "publisher": zod.string().nullish(),
+  "stage": zod.string().nullish(),
   "grade": zod.string().nullish(),
-  "subject": zod.string().nullish()
+  "subject": zod.string().nullish(),
+  "category": zod.string().nullish(),
+  "educationType": zod.string().nullish(),
+  "schoolYear": zod.string().nullish(),
+  "author": zod.string().nullish()
 })),
   "total": zod.number(),
   "page": zod.number(),
@@ -154,9 +192,19 @@ export const ListFeaturedProductsResponseItem = zod.object({
   "isBestSeller": zod.boolean().optional(),
   "isNew": zod.boolean().optional(),
   "isFeatured": zod.boolean().optional(),
+  "isOffer": zod.boolean().optional(),
+  "isRevision": zod.boolean().optional(),
+  "isBundle": zod.boolean().optional(),
+  "freeShipping": zod.boolean().optional(),
+  "freeShippingBadgeText": zod.string().nullish(),
   "publisher": zod.string().nullish(),
+  "stage": zod.string().nullish(),
   "grade": zod.string().nullish(),
-  "subject": zod.string().nullish()
+  "subject": zod.string().nullish(),
+  "category": zod.string().nullish(),
+  "educationType": zod.string().nullish(),
+  "schoolYear": zod.string().nullish(),
+  "author": zod.string().nullish()
 })
 export const ListFeaturedProductsResponse = zod.array(ListFeaturedProductsResponseItem)
 
@@ -179,9 +227,19 @@ export const GetSearchSuggestionsResponse = zod.object({
   "isBestSeller": zod.boolean().optional(),
   "isNew": zod.boolean().optional(),
   "isFeatured": zod.boolean().optional(),
+  "isOffer": zod.boolean().optional(),
+  "isRevision": zod.boolean().optional(),
+  "isBundle": zod.boolean().optional(),
+  "freeShipping": zod.boolean().optional(),
+  "freeShippingBadgeText": zod.string().nullish(),
   "publisher": zod.string().nullish(),
+  "stage": zod.string().nullish(),
   "grade": zod.string().nullish(),
-  "subject": zod.string().nullish()
+  "subject": zod.string().nullish(),
+  "category": zod.string().nullish(),
+  "educationType": zod.string().nullish(),
+  "schoolYear": zod.string().nullish(),
+  "author": zod.string().nullish()
 })),
   "suggestions": zod.array(zod.string()),
   "totalCount": zod.number().optional()
@@ -211,6 +269,9 @@ export const GetProductResponse = zod.object({
   "isBestSeller": zod.boolean().optional(),
   "isNew": zod.boolean().optional(),
   "isFeatured": zod.boolean().optional(),
+  "isOffer": zod.boolean().optional(),
+  "freeShipping": zod.boolean().optional(),
+  "freeShippingBadgeText": zod.string().nullish(),
   "isRevision": zod.boolean().optional(),
   "isBundle": zod.boolean().optional(),
   "educationType": zod.string().nullish(),
@@ -223,7 +284,20 @@ export const GetProductResponse = zod.object({
   "publisher": zod.string().nullish(),
   "author": zod.string().nullish(),
   "avgRating": zod.number().nullish(),
-  "reviewCount": zod.number().optional()
+  "reviewCount": zod.number().optional(),
+  "seoTitle": zod.string().nullish(),
+  "seoDescription": zod.string().nullish(),
+  "customerNoticeEnabled": zod.boolean().optional(),
+  "customerNoticeTitle": zod.string().nullish(),
+  "customerNoticeMessage": zod.string().nullish(),
+  "customerNoticeButtonText": zod.string().nullish(),
+  "customerNoticeIcon": zod.string().nullish(),
+  "customerNoticeImageUrl": zod.string().nullish(),
+  "customerNoticeType": zod.union([zod.literal('information'),zod.literal('warning'),zod.literal('preorder'),zod.literal('delayed_delivery'),zod.literal('custom'),zod.literal(null)]).nullish(),
+  "customerNoticeTrigger": zod.union([zod.literal('product_open'),zod.literal('add_to_cart'),zod.literal('buy_now'),zod.literal('checkout'),zod.literal('first_interaction'),zod.literal(null)]).nullish(),
+  "customerNoticeStartAt": zod.coerce.date().nullish(),
+  "customerNoticeEndAt": zod.coerce.date().nullish(),
+  "customerNoticeDismissible": zod.boolean().optional()
 })
 
 
@@ -244,11 +318,55 @@ export const GetRelatedProductsResponseItem = zod.object({
   "isBestSeller": zod.boolean().optional(),
   "isNew": zod.boolean().optional(),
   "isFeatured": zod.boolean().optional(),
+  "isOffer": zod.boolean().optional(),
+  "isRevision": zod.boolean().optional(),
+  "isBundle": zod.boolean().optional(),
+  "freeShipping": zod.boolean().optional(),
+  "freeShippingBadgeText": zod.string().nullish(),
   "publisher": zod.string().nullish(),
+  "stage": zod.string().nullish(),
   "grade": zod.string().nullish(),
-  "subject": zod.string().nullish()
+  "subject": zod.string().nullish(),
+  "category": zod.string().nullish(),
+  "educationType": zod.string().nullish(),
+  "schoolYear": zod.string().nullish(),
+  "author": zod.string().nullish()
 })
 export const GetRelatedProductsResponse = zod.array(GetRelatedProductsResponseItem)
+
+
+export const GetFrequentlyBoughtProductsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetFrequentlyBoughtProductsResponseItem = zod.object({
+  "id": zod.number(),
+  "nameAr": zod.string(),
+  "nameEn": zod.string().nullish(),
+  "slug": zod.string(),
+  "coverImage": zod.string().nullish(),
+  "price": zod.number(),
+  "oldPrice": zod.number().nullish(),
+  "discountPercent": zod.number().nullish(),
+  "inStock": zod.boolean(),
+  "isBestSeller": zod.boolean().optional(),
+  "isNew": zod.boolean().optional(),
+  "isFeatured": zod.boolean().optional(),
+  "isOffer": zod.boolean().optional(),
+  "isRevision": zod.boolean().optional(),
+  "isBundle": zod.boolean().optional(),
+  "freeShipping": zod.boolean().optional(),
+  "freeShippingBadgeText": zod.string().nullish(),
+  "publisher": zod.string().nullish(),
+  "stage": zod.string().nullish(),
+  "grade": zod.string().nullish(),
+  "subject": zod.string().nullish(),
+  "category": zod.string().nullish(),
+  "educationType": zod.string().nullish(),
+  "schoolYear": zod.string().nullish(),
+  "author": zod.string().nullish()
+})
+export const GetFrequentlyBoughtProductsResponse = zod.array(GetFrequentlyBoughtProductsResponseItem)
 
 
 export const ListCategoriesResponseItem = zod.object({
@@ -324,6 +442,48 @@ export const ListGovernoratesResponseItem = zod.object({
 export const ListGovernoratesResponse = zod.array(ListGovernoratesResponseItem)
 
 
+export const ListGovernorateCitiesParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ListGovernorateCitiesResponseItem = zod.object({
+  "id": zod.number(),
+  "governorateId": zod.number(),
+  "nameAr": zod.string(),
+  "surcharge": zod.number(),
+  "shippingPriceOverride": zod.number().nullish()
+})
+export const ListGovernorateCitiesResponse = zod.array(ListGovernorateCitiesResponseItem)
+
+
+export const GetShippingQuoteBody = zod.object({
+  "governorateId": zod.number(),
+  "city": zod.string().optional(),
+  "couponCode": zod.string().optional(),
+  "items": zod.array(zod.object({
+  "productId": zod.number(),
+  "quantity": zod.number()
+})).optional()
+})
+
+export const GetShippingQuoteResponse = zod.object({
+  "baseCost": zod.number(),
+  "surcharge": zod.number(),
+  "discount": zod.number(),
+  "finalCost": zod.number(),
+  "freeShippingReason": zod.string().nullish(),
+  "rule": zod.enum(['all_products_free', 'coupon', 'governorate_threshold', 'standard']),
+  "governorateId": zod.number(),
+  "governorateName": zod.string(),
+  "city": zod.string().nullish(),
+  "cityId": zod.number().nullish(),
+  "subtotal": zod.number(),
+  "estimatedDays": zod.number(),
+  "estimatedDeliveryText": zod.string().nullish(),
+  "snapshot": zod.record(zod.string(), zod.unknown())
+})
+
+
 export const GetCartResponse = zod.object({
   "items": zod.array(zod.object({
   "productId": zod.number(),
@@ -335,7 +495,9 @@ export const GetCartResponse = zod.object({
   "oldPrice": zod.number().nullish(),
   "subtotal": zod.number(),
   "inStock": zod.boolean().optional(),
-  "stockQuantity": zod.number().optional()
+  "stockQuantity": zod.number().optional(),
+  "freeShipping": zod.boolean().optional(),
+  "freeShippingBadgeText": zod.string().nullish()
 })),
   "subtotal": zod.number(),
   "discount": zod.number().optional(),
@@ -344,7 +506,8 @@ export const GetCartResponse = zod.object({
   "couponCode": zod.string().nullish(),
   "couponDiscount": zod.number().optional(),
   "governorateId": zod.number().nullish(),
-  "notes": zod.string().nullish()
+  "notes": zod.string().nullish(),
+  "freeShippingReason": zod.string().nullish()
 })
 
 
@@ -364,7 +527,9 @@ export const AddToCartResponse = zod.object({
   "oldPrice": zod.number().nullish(),
   "subtotal": zod.number(),
   "inStock": zod.boolean().optional(),
-  "stockQuantity": zod.number().optional()
+  "stockQuantity": zod.number().optional(),
+  "freeShipping": zod.boolean().optional(),
+  "freeShippingBadgeText": zod.string().nullish()
 })),
   "subtotal": zod.number(),
   "discount": zod.number().optional(),
@@ -373,7 +538,8 @@ export const AddToCartResponse = zod.object({
   "couponCode": zod.string().nullish(),
   "couponDiscount": zod.number().optional(),
   "governorateId": zod.number().nullish(),
-  "notes": zod.string().nullish()
+  "notes": zod.string().nullish(),
+  "freeShippingReason": zod.string().nullish()
 })
 
 
@@ -396,7 +562,9 @@ export const UpdateCartItemResponse = zod.object({
   "oldPrice": zod.number().nullish(),
   "subtotal": zod.number(),
   "inStock": zod.boolean().optional(),
-  "stockQuantity": zod.number().optional()
+  "stockQuantity": zod.number().optional(),
+  "freeShipping": zod.boolean().optional(),
+  "freeShippingBadgeText": zod.string().nullish()
 })),
   "subtotal": zod.number(),
   "discount": zod.number().optional(),
@@ -405,7 +573,8 @@ export const UpdateCartItemResponse = zod.object({
   "couponCode": zod.string().nullish(),
   "couponDiscount": zod.number().optional(),
   "governorateId": zod.number().nullish(),
-  "notes": zod.string().nullish()
+  "notes": zod.string().nullish(),
+  "freeShippingReason": zod.string().nullish()
 })
 
 
@@ -424,7 +593,9 @@ export const RemoveFromCartResponse = zod.object({
   "oldPrice": zod.number().nullish(),
   "subtotal": zod.number(),
   "inStock": zod.boolean().optional(),
-  "stockQuantity": zod.number().optional()
+  "stockQuantity": zod.number().optional(),
+  "freeShipping": zod.boolean().optional(),
+  "freeShippingBadgeText": zod.string().nullish()
 })),
   "subtotal": zod.number(),
   "discount": zod.number().optional(),
@@ -433,7 +604,8 @@ export const RemoveFromCartResponse = zod.object({
   "couponCode": zod.string().nullish(),
   "couponDiscount": zod.number().optional(),
   "governorateId": zod.number().nullish(),
-  "notes": zod.string().nullish()
+  "notes": zod.string().nullish(),
+  "freeShippingReason": zod.string().nullish()
 })
 
 
@@ -452,7 +624,9 @@ export const ApplyCouponResponse = zod.object({
   "oldPrice": zod.number().nullish(),
   "subtotal": zod.number(),
   "inStock": zod.boolean().optional(),
-  "stockQuantity": zod.number().optional()
+  "stockQuantity": zod.number().optional(),
+  "freeShipping": zod.boolean().optional(),
+  "freeShippingBadgeText": zod.string().nullish()
 })),
   "subtotal": zod.number(),
   "discount": zod.number().optional(),
@@ -461,7 +635,8 @@ export const ApplyCouponResponse = zod.object({
   "couponCode": zod.string().nullish(),
   "couponDiscount": zod.number().optional(),
   "governorateId": zod.number().nullish(),
-  "notes": zod.string().nullish()
+  "notes": zod.string().nullish(),
+  "freeShippingReason": zod.string().nullish()
 })
 
 
@@ -476,7 +651,9 @@ export const RemoveCouponResponse = zod.object({
   "oldPrice": zod.number().nullish(),
   "subtotal": zod.number(),
   "inStock": zod.boolean().optional(),
-  "stockQuantity": zod.number().optional()
+  "stockQuantity": zod.number().optional(),
+  "freeShipping": zod.boolean().optional(),
+  "freeShippingBadgeText": zod.string().nullish()
 })),
   "subtotal": zod.number(),
   "discount": zod.number().optional(),
@@ -485,22 +662,36 @@ export const RemoveCouponResponse = zod.object({
   "couponCode": zod.string().nullish(),
   "couponDiscount": zod.number().optional(),
   "governorateId": zod.number().nullish(),
-  "notes": zod.string().nullish()
+  "notes": zod.string().nullish(),
+  "freeShippingReason": zod.string().nullish()
 })
+
+
+export const createOrderBodyPrimaryPhoneHasWhatsAppDefault = true;
+export const createOrderBodyAlternatePhoneHasWhatsAppDefault = false;
+export const createOrderBodyCheckoutTokenMin = 12;
+export const createOrderBodyCheckoutTokenMax = 100;
+
 
 
 export const CreateOrderBody = zod.object({
   "customerName": zod.string(),
   "mobile": zod.string(),
+  "primaryPhoneHasWhatsApp": zod.boolean().default(createOrderBodyPrimaryPhoneHasWhatsAppDefault),
   "altMobile": zod.string().nullish(),
+  "alternatePhoneHasWhatsApp": zod.boolean().default(createOrderBodyAlternatePhoneHasWhatsAppDefault),
+  "preferredWhatsAppPhone": zod.string().nullish(),
   "governorateId": zod.number(),
   "city": zod.string(),
   "detailedAddress": zod.string(),
   "landmark": zod.string().nullish(),
   "deliveryNotes": zod.string().nullish(),
   "orderNotes": zod.string().nullish(),
-  "paymentMethod": zod.enum(['cash_on_delivery', 'fawry']),
+  "paymentMethod": zod.enum(['manual_transfer', 'cash_on_delivery']),
+  "paymentPlan": zod.union([zod.literal('deposit_100'),zod.literal('full'),zod.literal(null)]).nullish(),
+  "transferMethod": zod.union([zod.literal('instapay'),zod.literal('mobile_wallet'),zod.literal(null)]).nullish(),
   "couponCode": zod.string().nullish(),
+  "checkoutToken": zod.string().min(createOrderBodyCheckoutTokenMin).max(createOrderBodyCheckoutTokenMax).optional(),
   "cartItems": zod.array(zod.object({
   "productId": zod.number(),
   "quantity": zod.number()
@@ -513,9 +704,19 @@ export const CreateOrderResponse = zod.object({
   "status": zod.string(),
   "paymentStatus": zod.string(),
   "paymentMethod": zod.string().optional(),
+  "paymentPlan": zod.string().nullish(),
+  "transferMethod": zod.string().nullish(),
+  "requiredPaymentAmount": zod.number().nullish(),
+  "paidAmount": zod.number().optional(),
+  "remainingAmount": zod.number().nullish(),
   "customerName": zod.string().optional(),
   "mobile": zod.string().optional(),
+  "primaryPhone": zod.string().optional(),
+  "primaryPhoneHasWhatsApp": zod.boolean().optional(),
   "altMobile": zod.string().nullish(),
+  "alternatePhone": zod.string().nullish(),
+  "alternatePhoneHasWhatsApp": zod.boolean().optional(),
+  "preferredWhatsAppPhone": zod.string().nullish(),
   "governorate": zod.string().optional(),
   "city": zod.string().optional(),
   "detailedAddress": zod.string().optional(),
@@ -525,7 +726,13 @@ export const CreateOrderResponse = zod.object({
   "subtotal": zod.number(),
   "discount": zod.number().optional(),
   "couponDiscount": zod.number().optional(),
+  "couponCode": zod.string().nullish(),
   "shippingCost": zod.number(),
+  "shippingBaseCost": zod.number().optional(),
+  "shippingSurcharge": zod.number().optional(),
+  "shippingDiscount": zod.number().optional(),
+  "freeShippingReason": zod.string().nullish(),
+  "shippingRuleSnapshot": zod.record(zod.string(), zod.unknown()).nullish(),
   "total": zod.number(),
   "estimatedDeliveryDate": zod.string().nullish(),
   "trackingNumber": zod.string().nullish(),
@@ -557,6 +764,11 @@ export const TrackOrderResponse = zod.object({
   "orderNumber": zod.string(),
   "status": zod.string(),
   "paymentMethod": zod.string().optional(),
+  "paymentStatus": zod.string().optional(),
+  "paymentPlan": zod.string().nullish(),
+  "transferMethod": zod.string().nullish(),
+  "paidAmount": zod.number().optional(),
+  "remainingAmount": zod.number().nullish(),
   "estimatedDeliveryDate": zod.string().nullish(),
   "trackingNumber": zod.string().nullish(),
   "shippingCompany": zod.string().nullish(),
@@ -566,6 +778,67 @@ export const TrackOrderResponse = zod.object({
   "createdAt": zod.string()
 })),
   "createdAt": zod.string().optional()
+})
+
+
+export const GetOrderConfirmationParams = zod.object({
+  "orderNumber": zod.coerce.string()
+})
+
+export const GetOrderConfirmationResponse = zod.object({
+  "id": zod.number(),
+  "orderNumber": zod.string(),
+  "status": zod.string(),
+  "paymentStatus": zod.string(),
+  "paymentMethod": zod.string().optional(),
+  "paymentPlan": zod.string().nullish(),
+  "transferMethod": zod.string().nullish(),
+  "requiredPaymentAmount": zod.number().nullish(),
+  "paidAmount": zod.number().optional(),
+  "remainingAmount": zod.number().nullish(),
+  "customerName": zod.string().optional(),
+  "mobile": zod.string().optional(),
+  "primaryPhone": zod.string().optional(),
+  "primaryPhoneHasWhatsApp": zod.boolean().optional(),
+  "altMobile": zod.string().nullish(),
+  "alternatePhone": zod.string().nullish(),
+  "alternatePhoneHasWhatsApp": zod.boolean().optional(),
+  "preferredWhatsAppPhone": zod.string().nullish(),
+  "governorate": zod.string().optional(),
+  "city": zod.string().optional(),
+  "detailedAddress": zod.string().optional(),
+  "landmark": zod.string().nullish(),
+  "deliveryNotes": zod.string().nullish(),
+  "orderNotes": zod.string().nullish(),
+  "subtotal": zod.number(),
+  "discount": zod.number().optional(),
+  "couponDiscount": zod.number().optional(),
+  "couponCode": zod.string().nullish(),
+  "shippingCost": zod.number(),
+  "shippingBaseCost": zod.number().optional(),
+  "shippingSurcharge": zod.number().optional(),
+  "shippingDiscount": zod.number().optional(),
+  "freeShippingReason": zod.string().nullish(),
+  "shippingRuleSnapshot": zod.record(zod.string(), zod.unknown()).nullish(),
+  "total": zod.number(),
+  "estimatedDeliveryDate": zod.string().nullish(),
+  "trackingNumber": zod.string().nullish(),
+  "shippingCompany": zod.string().nullish(),
+  "items": zod.array(zod.object({
+  "productId": zod.number(),
+  "nameAr": zod.string(),
+  "coverImage": zod.string().nullish(),
+  "quantity": zod.number(),
+  "unitPrice": zod.number(),
+  "subtotal": zod.number(),
+  "discount": zod.number().optional()
+})),
+  "statusHistory": zod.array(zod.object({
+  "status": zod.string(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string()
+})).optional(),
+  "createdAt": zod.string()
 })
 
 
@@ -584,9 +857,19 @@ export const GetMyOrdersResponse = zod.object({
   "status": zod.string(),
   "paymentStatus": zod.string(),
   "paymentMethod": zod.string().optional(),
+  "paymentPlan": zod.string().nullish(),
+  "transferMethod": zod.string().nullish(),
+  "requiredPaymentAmount": zod.number().nullish(),
+  "paidAmount": zod.number().optional(),
+  "remainingAmount": zod.number().nullish(),
   "customerName": zod.string().optional(),
   "mobile": zod.string().optional(),
+  "primaryPhone": zod.string().optional(),
+  "primaryPhoneHasWhatsApp": zod.boolean().optional(),
   "altMobile": zod.string().nullish(),
+  "alternatePhone": zod.string().nullish(),
+  "alternatePhoneHasWhatsApp": zod.boolean().optional(),
+  "preferredWhatsAppPhone": zod.string().nullish(),
   "governorate": zod.string().optional(),
   "city": zod.string().optional(),
   "detailedAddress": zod.string().optional(),
@@ -596,7 +879,13 @@ export const GetMyOrdersResponse = zod.object({
   "subtotal": zod.number(),
   "discount": zod.number().optional(),
   "couponDiscount": zod.number().optional(),
+  "couponCode": zod.string().nullish(),
   "shippingCost": zod.number(),
+  "shippingBaseCost": zod.number().optional(),
+  "shippingSurcharge": zod.number().optional(),
+  "shippingDiscount": zod.number().optional(),
+  "freeShippingReason": zod.string().nullish(),
+  "shippingRuleSnapshot": zod.record(zod.string(), zod.unknown()).nullish(),
   "total": zod.number(),
   "estimatedDeliveryDate": zod.string().nullish(),
   "trackingNumber": zod.string().nullish(),
@@ -633,9 +922,19 @@ export const GetMyOrderResponse = zod.object({
   "status": zod.string(),
   "paymentStatus": zod.string(),
   "paymentMethod": zod.string().optional(),
+  "paymentPlan": zod.string().nullish(),
+  "transferMethod": zod.string().nullish(),
+  "requiredPaymentAmount": zod.number().nullish(),
+  "paidAmount": zod.number().optional(),
+  "remainingAmount": zod.number().nullish(),
   "customerName": zod.string().optional(),
   "mobile": zod.string().optional(),
+  "primaryPhone": zod.string().optional(),
+  "primaryPhoneHasWhatsApp": zod.boolean().optional(),
   "altMobile": zod.string().nullish(),
+  "alternatePhone": zod.string().nullish(),
+  "alternatePhoneHasWhatsApp": zod.boolean().optional(),
+  "preferredWhatsAppPhone": zod.string().nullish(),
   "governorate": zod.string().optional(),
   "city": zod.string().optional(),
   "detailedAddress": zod.string().optional(),
@@ -645,7 +944,13 @@ export const GetMyOrderResponse = zod.object({
   "subtotal": zod.number(),
   "discount": zod.number().optional(),
   "couponDiscount": zod.number().optional(),
+  "couponCode": zod.string().nullish(),
   "shippingCost": zod.number(),
+  "shippingBaseCost": zod.number().optional(),
+  "shippingSurcharge": zod.number().optional(),
+  "shippingDiscount": zod.number().optional(),
+  "freeShippingReason": zod.string().nullish(),
+  "shippingRuleSnapshot": zod.record(zod.string(), zod.unknown()).nullish(),
   "total": zod.number(),
   "estimatedDeliveryDate": zod.string().nullish(),
   "trackingNumber": zod.string().nullish(),
@@ -688,7 +993,12 @@ export const RequestOrderCancellationResponse = zod.object({
 export const UpdateCustomerProfileBody = zod.object({
   "name": zod.string().optional(),
   "email": zod.string().optional(),
-  "mobile": zod.string().optional()
+  "mobile": zod.string().optional(),
+  "primaryPhone": zod.string().optional(),
+  "primaryPhoneHasWhatsApp": zod.boolean().optional(),
+  "alternatePhone": zod.string().nullish(),
+  "alternatePhoneHasWhatsApp": zod.boolean().optional(),
+  "preferredWhatsAppPhone": zod.string().nullish()
 })
 
 export const UpdateCustomerProfileResponse = zod.object({
@@ -696,6 +1006,11 @@ export const UpdateCustomerProfileResponse = zod.object({
   "name": zod.string(),
   "email": zod.string().nullish(),
   "mobile": zod.string(),
+  "primaryPhone": zod.string(),
+  "primaryPhoneHasWhatsApp": zod.boolean(),
+  "alternatePhone": zod.string().nullish(),
+  "alternatePhoneHasWhatsApp": zod.boolean(),
+  "preferredWhatsAppPhone": zod.string().nullish(),
   "isBlocked": zod.boolean().optional(),
   "createdAt": zod.string()
 })
@@ -703,10 +1018,16 @@ export const UpdateCustomerProfileResponse = zod.object({
 
 export const ListCustomerAddressesResponseItem = zod.object({
   "id": zod.number(),
+  "governorateId": zod.number().optional(),
   "governorate": zod.string(),
   "city": zod.string(),
   "detailedAddress": zod.string(),
   "landmark": zod.string().nullish(),
+  "primaryPhone": zod.string().nullish(),
+  "primaryPhoneHasWhatsApp": zod.boolean().optional(),
+  "alternatePhone": zod.string().nullish(),
+  "alternatePhoneHasWhatsApp": zod.boolean().optional(),
+  "preferredWhatsAppPhone": zod.string().nullish(),
   "isDefault": zod.boolean().optional()
 })
 export const ListCustomerAddressesResponse = zod.array(ListCustomerAddressesResponseItem)
@@ -717,17 +1038,68 @@ export const AddCustomerAddressBody = zod.object({
   "city": zod.string(),
   "detailedAddress": zod.string(),
   "landmark": zod.string().optional(),
+  "primaryPhone": zod.string().optional(),
+  "primaryPhoneHasWhatsApp": zod.boolean().optional(),
+  "alternatePhone": zod.string().nullish(),
+  "alternatePhoneHasWhatsApp": zod.boolean().optional(),
+  "preferredWhatsAppPhone": zod.string().nullish(),
   "isDefault": zod.boolean().optional()
 })
 
 export const AddCustomerAddressResponse = zod.object({
   "id": zod.number(),
+  "governorateId": zod.number().optional(),
   "governorate": zod.string(),
   "city": zod.string(),
   "detailedAddress": zod.string(),
   "landmark": zod.string().nullish(),
+  "primaryPhone": zod.string().nullish(),
+  "primaryPhoneHasWhatsApp": zod.boolean().optional(),
+  "alternatePhone": zod.string().nullish(),
+  "alternatePhoneHasWhatsApp": zod.boolean().optional(),
+  "preferredWhatsAppPhone": zod.string().nullish(),
   "isDefault": zod.boolean().optional()
 })
+
+
+export const UpdateCustomerAddressParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateCustomerAddressBody = zod.object({
+  "governorateId": zod.number(),
+  "city": zod.string(),
+  "detailedAddress": zod.string(),
+  "landmark": zod.string().optional(),
+  "primaryPhone": zod.string().optional(),
+  "primaryPhoneHasWhatsApp": zod.boolean().optional(),
+  "alternatePhone": zod.string().nullish(),
+  "alternatePhoneHasWhatsApp": zod.boolean().optional(),
+  "preferredWhatsAppPhone": zod.string().nullish(),
+  "isDefault": zod.boolean().optional()
+})
+
+export const UpdateCustomerAddressResponse = zod.object({
+  "id": zod.number(),
+  "governorateId": zod.number().optional(),
+  "governorate": zod.string(),
+  "city": zod.string(),
+  "detailedAddress": zod.string(),
+  "landmark": zod.string().nullish(),
+  "primaryPhone": zod.string().nullish(),
+  "primaryPhoneHasWhatsApp": zod.boolean().optional(),
+  "alternatePhone": zod.string().nullish(),
+  "alternatePhoneHasWhatsApp": zod.boolean().optional(),
+  "preferredWhatsAppPhone": zod.string().nullish(),
+  "isDefault": zod.boolean().optional()
+})
+
+
+export const DeleteCustomerAddressParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteCustomerAddressResponse = zod.void()
 
 
 export const ListFavoritesResponseItem = zod.object({
@@ -743,9 +1115,19 @@ export const ListFavoritesResponseItem = zod.object({
   "isBestSeller": zod.boolean().optional(),
   "isNew": zod.boolean().optional(),
   "isFeatured": zod.boolean().optional(),
+  "isOffer": zod.boolean().optional(),
+  "isRevision": zod.boolean().optional(),
+  "isBundle": zod.boolean().optional(),
+  "freeShipping": zod.boolean().optional(),
+  "freeShippingBadgeText": zod.string().nullish(),
   "publisher": zod.string().nullish(),
+  "stage": zod.string().nullish(),
   "grade": zod.string().nullish(),
-  "subject": zod.string().nullish()
+  "subject": zod.string().nullish(),
+  "category": zod.string().nullish(),
+  "educationType": zod.string().nullish(),
+  "schoolYear": zod.string().nullish(),
+  "author": zod.string().nullish()
 })
 export const ListFavoritesResponse = zod.array(ListFavoritesResponseItem)
 
@@ -802,6 +1184,13 @@ export const GetSiteSettingsResponse = zod.object({
   "storeName": zod.string().optional(),
   "storeNameAr": zod.string().optional(),
   "logoUrl": zod.string().nullish(),
+  "mainLogoUrl": zod.string().nullish(),
+  "darkBackgroundLogoUrl": zod.string().nullish(),
+  "lightBackgroundLogoUrl": zod.string().nullish(),
+  "mobileLogoUrl": zod.string().nullish(),
+  "faviconUrl": zod.string().nullish(),
+  "adminLogoUrl": zod.string().nullish(),
+  "socialImageUrl": zod.string().nullish(),
   "whatsappNumber": zod.string().nullish(),
   "phoneNumber": zod.string().nullish(),
   "email": zod.string().nullish(),
@@ -812,6 +1201,9 @@ export const GetSiteSettingsResponse = zod.object({
   "telegramUrl": zod.string().nullish(),
   "announcementBar": zod.string().nullish(),
   "announcementEnabled": zod.boolean().optional(),
+  "announcementLink": zod.string().nullish(),
+  "announcementStartAt": zod.coerce.date().nullish(),
+  "announcementEndAt": zod.coerce.date().nullish(),
   "seoTitle": zod.string().nullish(),
   "seoDescription": zod.string().nullish()
 })
@@ -822,9 +1214,17 @@ export const ListBannersResponseItem = zod.object({
   "imageUrl": zod.string(),
   "titleAr": zod.string().nullish(),
   "subtitleAr": zod.string().nullish(),
+  "badgeText": zod.string().nullish(),
+  "primaryButtonText": zod.string().nullish(),
+  "primaryButtonUrl": zod.string().nullish(),
+  "secondaryButtonText": zod.string().nullish(),
+  "secondaryButtonUrl": zod.string().nullish(),
+  "textAlignment": zod.enum(['right', 'center', 'left']),
   "linkUrl": zod.string().nullish(),
   "sortOrder": zod.number(),
-  "isActive": zod.boolean()
+  "isActive": zod.boolean(),
+  "startAt": zod.coerce.date().nullish(),
+  "endAt": zod.coerce.date().nullish()
 })
 export const ListBannersResponse = zod.array(ListBannersResponseItem)
 
@@ -835,9 +1235,17 @@ export const GetHomepageContentResponse = zod.object({
   "imageUrl": zod.string(),
   "titleAr": zod.string().nullish(),
   "subtitleAr": zod.string().nullish(),
+  "badgeText": zod.string().nullish(),
+  "primaryButtonText": zod.string().nullish(),
+  "primaryButtonUrl": zod.string().nullish(),
+  "secondaryButtonText": zod.string().nullish(),
+  "secondaryButtonUrl": zod.string().nullish(),
+  "textAlignment": zod.enum(['right', 'center', 'left']),
   "linkUrl": zod.string().nullish(),
   "sortOrder": zod.number(),
-  "isActive": zod.boolean()
+  "isActive": zod.boolean(),
+  "startAt": zod.coerce.date().nullish(),
+  "endAt": zod.coerce.date().nullish()
 })).optional(),
   "featuredProducts": zod.array(zod.object({
   "id": zod.number(),
@@ -852,9 +1260,19 @@ export const GetHomepageContentResponse = zod.object({
   "isBestSeller": zod.boolean().optional(),
   "isNew": zod.boolean().optional(),
   "isFeatured": zod.boolean().optional(),
+  "isOffer": zod.boolean().optional(),
+  "isRevision": zod.boolean().optional(),
+  "isBundle": zod.boolean().optional(),
+  "freeShipping": zod.boolean().optional(),
+  "freeShippingBadgeText": zod.string().nullish(),
   "publisher": zod.string().nullish(),
+  "stage": zod.string().nullish(),
   "grade": zod.string().nullish(),
-  "subject": zod.string().nullish()
+  "subject": zod.string().nullish(),
+  "category": zod.string().nullish(),
+  "educationType": zod.string().nullish(),
+  "schoolYear": zod.string().nullish(),
+  "author": zod.string().nullish()
 })).optional(),
   "bestSellers": zod.array(zod.object({
   "id": zod.number(),
@@ -869,9 +1287,19 @@ export const GetHomepageContentResponse = zod.object({
   "isBestSeller": zod.boolean().optional(),
   "isNew": zod.boolean().optional(),
   "isFeatured": zod.boolean().optional(),
+  "isOffer": zod.boolean().optional(),
+  "isRevision": zod.boolean().optional(),
+  "isBundle": zod.boolean().optional(),
+  "freeShipping": zod.boolean().optional(),
+  "freeShippingBadgeText": zod.string().nullish(),
   "publisher": zod.string().nullish(),
+  "stage": zod.string().nullish(),
   "grade": zod.string().nullish(),
-  "subject": zod.string().nullish()
+  "subject": zod.string().nullish(),
+  "category": zod.string().nullish(),
+  "educationType": zod.string().nullish(),
+  "schoolYear": zod.string().nullish(),
+  "author": zod.string().nullish()
 })).optional(),
   "newArrivals": zod.array(zod.object({
   "id": zod.number(),
@@ -886,9 +1314,19 @@ export const GetHomepageContentResponse = zod.object({
   "isBestSeller": zod.boolean().optional(),
   "isNew": zod.boolean().optional(),
   "isFeatured": zod.boolean().optional(),
+  "isOffer": zod.boolean().optional(),
+  "isRevision": zod.boolean().optional(),
+  "isBundle": zod.boolean().optional(),
+  "freeShipping": zod.boolean().optional(),
+  "freeShippingBadgeText": zod.string().nullish(),
   "publisher": zod.string().nullish(),
+  "stage": zod.string().nullish(),
   "grade": zod.string().nullish(),
-  "subject": zod.string().nullish()
+  "subject": zod.string().nullish(),
+  "category": zod.string().nullish(),
+  "educationType": zod.string().nullish(),
+  "schoolYear": zod.string().nullish(),
+  "author": zod.string().nullish()
 })).optional(),
   "revisionBooks": zod.array(zod.object({
   "id": zod.number(),
@@ -903,16 +1341,222 @@ export const GetHomepageContentResponse = zod.object({
   "isBestSeller": zod.boolean().optional(),
   "isNew": zod.boolean().optional(),
   "isFeatured": zod.boolean().optional(),
+  "isOffer": zod.boolean().optional(),
+  "isRevision": zod.boolean().optional(),
+  "isBundle": zod.boolean().optional(),
+  "freeShipping": zod.boolean().optional(),
+  "freeShippingBadgeText": zod.string().nullish(),
   "publisher": zod.string().nullish(),
+  "stage": zod.string().nullish(),
   "grade": zod.string().nullish(),
-  "subject": zod.string().nullish()
+  "subject": zod.string().nullish(),
+  "category": zod.string().nullish(),
+  "educationType": zod.string().nullish(),
+  "schoolYear": zod.string().nullish(),
+  "author": zod.string().nullish()
 })).optional(),
+  "offers": zod.array(zod.object({
+  "id": zod.number(),
+  "nameAr": zod.string(),
+  "nameEn": zod.string().nullish(),
+  "slug": zod.string(),
+  "coverImage": zod.string().nullish(),
+  "price": zod.number(),
+  "oldPrice": zod.number().nullish(),
+  "discountPercent": zod.number().nullish(),
+  "inStock": zod.boolean(),
+  "isBestSeller": zod.boolean().optional(),
+  "isNew": zod.boolean().optional(),
+  "isFeatured": zod.boolean().optional(),
+  "isOffer": zod.boolean().optional(),
+  "isRevision": zod.boolean().optional(),
+  "isBundle": zod.boolean().optional(),
+  "freeShipping": zod.boolean().optional(),
+  "freeShippingBadgeText": zod.string().nullish(),
+  "publisher": zod.string().nullish(),
+  "stage": zod.string().nullish(),
+  "grade": zod.string().nullish(),
+  "subject": zod.string().nullish(),
+  "category": zod.string().nullish(),
+  "educationType": zod.string().nullish(),
+  "schoolYear": zod.string().nullish(),
+  "author": zod.string().nullish()
+})).optional(),
+  "bundles": zod.array(zod.object({
+  "id": zod.number(),
+  "nameAr": zod.string(),
+  "nameEn": zod.string().nullish(),
+  "slug": zod.string(),
+  "coverImage": zod.string().nullish(),
+  "price": zod.number(),
+  "oldPrice": zod.number().nullish(),
+  "discountPercent": zod.number().nullish(),
+  "inStock": zod.boolean(),
+  "isBestSeller": zod.boolean().optional(),
+  "isNew": zod.boolean().optional(),
+  "isFeatured": zod.boolean().optional(),
+  "isOffer": zod.boolean().optional(),
+  "isRevision": zod.boolean().optional(),
+  "isBundle": zod.boolean().optional(),
+  "freeShipping": zod.boolean().optional(),
+  "freeShippingBadgeText": zod.string().nullish(),
+  "publisher": zod.string().nullish(),
+  "stage": zod.string().nullish(),
+  "grade": zod.string().nullish(),
+  "subject": zod.string().nullish(),
+  "category": zod.string().nullish(),
+  "educationType": zod.string().nullish(),
+  "schoolYear": zod.string().nullish(),
+  "author": zod.string().nullish()
+})).optional(),
+  "freeShippingProducts": zod.array(zod.object({
+  "id": zod.number(),
+  "nameAr": zod.string(),
+  "nameEn": zod.string().nullish(),
+  "slug": zod.string(),
+  "coverImage": zod.string().nullish(),
+  "price": zod.number(),
+  "oldPrice": zod.number().nullish(),
+  "discountPercent": zod.number().nullish(),
+  "inStock": zod.boolean(),
+  "isBestSeller": zod.boolean().optional(),
+  "isNew": zod.boolean().optional(),
+  "isFeatured": zod.boolean().optional(),
+  "isOffer": zod.boolean().optional(),
+  "isRevision": zod.boolean().optional(),
+  "isBundle": zod.boolean().optional(),
+  "freeShipping": zod.boolean().optional(),
+  "freeShippingBadgeText": zod.string().nullish(),
+  "publisher": zod.string().nullish(),
+  "stage": zod.string().nullish(),
+  "grade": zod.string().nullish(),
+  "subject": zod.string().nullish(),
+  "category": zod.string().nullish(),
+  "educationType": zod.string().nullish(),
+  "schoolYear": zod.string().nullish(),
+  "author": zod.string().nullish()
+})).optional(),
+  "recommendedProducts": zod.array(zod.object({
+  "id": zod.number(),
+  "nameAr": zod.string(),
+  "nameEn": zod.string().nullish(),
+  "slug": zod.string(),
+  "coverImage": zod.string().nullish(),
+  "price": zod.number(),
+  "oldPrice": zod.number().nullish(),
+  "discountPercent": zod.number().nullish(),
+  "inStock": zod.boolean(),
+  "isBestSeller": zod.boolean().optional(),
+  "isNew": zod.boolean().optional(),
+  "isFeatured": zod.boolean().optional(),
+  "isOffer": zod.boolean().optional(),
+  "isRevision": zod.boolean().optional(),
+  "isBundle": zod.boolean().optional(),
+  "freeShipping": zod.boolean().optional(),
+  "freeShippingBadgeText": zod.string().nullish(),
+  "publisher": zod.string().nullish(),
+  "stage": zod.string().nullish(),
+  "grade": zod.string().nullish(),
+  "subject": zod.string().nullish(),
+  "category": zod.string().nullish(),
+  "educationType": zod.string().nullish(),
+  "schoolYear": zod.string().nullish(),
+  "author": zod.string().nullish()
+})).optional(),
+  "showcaseProducts": zod.array(zod.object({
+  "id": zod.number(),
+  "nameAr": zod.string(),
+  "nameEn": zod.string().nullish(),
+  "slug": zod.string(),
+  "coverImage": zod.string().nullish(),
+  "price": zod.number(),
+  "oldPrice": zod.number().nullish(),
+  "discountPercent": zod.number().nullish(),
+  "inStock": zod.boolean(),
+  "isBestSeller": zod.boolean().optional(),
+  "isNew": zod.boolean().optional(),
+  "isFeatured": zod.boolean().optional(),
+  "isOffer": zod.boolean().optional(),
+  "isRevision": zod.boolean().optional(),
+  "isBundle": zod.boolean().optional(),
+  "freeShipping": zod.boolean().optional(),
+  "freeShippingBadgeText": zod.string().nullish(),
+  "publisher": zod.string().nullish(),
+  "stage": zod.string().nullish(),
+  "grade": zod.string().nullish(),
+  "subject": zod.string().nullish(),
+  "category": zod.string().nullish(),
+  "educationType": zod.string().nullish(),
+  "schoolYear": zod.string().nullish(),
+  "author": zod.string().nullish()
+})).optional(),
+  "homepageLayout": zod.object({
+  "discovery": zod.object({
+  "enabled": zod.boolean(),
+  "badgeText": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "secondaryTitle": zod.string(),
+  "baccalaureateTitle": zod.string(),
+  "teachersTitle": zod.string(),
+  "secondaryGradeIds": zod.array(zod.number()),
+  "baccalaureateGradeIds": zod.array(zod.number()),
+  "teacherIds": zod.array(zod.number()),
+  "models": zod.array(zod.object({
+  "productId": zod.number(),
+  "imageUrl": zod.string().nullish(),
+  "imageStorageKey": zod.string().nullish(),
+  "caption": zod.string().nullish()
+}))
+}),
+  "stages": zod.object({
+  "enabled": zod.boolean(),
+  "title": zod.string(),
+  "subtitle": zod.string().nullish(),
+  "itemIds": zod.array(zod.number())
+}),
+  "grades": zod.object({
+  "enabled": zod.boolean(),
+  "title": zod.string(),
+  "subtitle": zod.string().nullish(),
+  "itemIds": zod.array(zod.number())
+}),
+  "subjects": zod.object({
+  "enabled": zod.boolean(),
+  "title": zod.string(),
+  "subtitle": zod.string().nullish(),
+  "itemIds": zod.array(zod.number())
+})
+}).optional(),
   "stages": zod.array(zod.object({
   "id": zod.number(),
   "nameAr": zod.string(),
   "nameEn": zod.string().nullish(),
   "sortOrder": zod.number().optional(),
   "isActive": zod.boolean().optional()
+})).optional(),
+  "grades": zod.array(zod.object({
+  "id": zod.number(),
+  "nameAr": zod.string(),
+  "nameEn": zod.string().nullish(),
+  "stageId": zod.number(),
+  "stageName": zod.string().nullish(),
+  "sortOrder": zod.number().optional(),
+  "isActive": zod.boolean().optional()
+})).optional(),
+  "subjects": zod.array(zod.object({
+  "id": zod.number(),
+  "nameAr": zod.string(),
+  "nameEn": zod.string().nullish(),
+  "isActive": zod.boolean().optional()
+})).optional(),
+  "categories": zod.array(zod.object({
+  "id": zod.number(),
+  "nameAr": zod.string(),
+  "nameEn": zod.string().nullish(),
+  "slug": zod.string(),
+  "image": zod.string().nullish(),
+  "productCount": zod.number().optional()
 })).optional(),
   "publishers": zod.array(zod.object({
   "id": zod.number(),
@@ -921,10 +1565,23 @@ export const GetHomepageContentResponse = zod.object({
   "logo": zod.string().nullish(),
   "isActive": zod.boolean().optional()
 })).optional(),
+  "teachers": zod.array(zod.object({
+  "id": zod.number(),
+  "nameAr": zod.string(),
+  "nameEn": zod.string().nullish(),
+  "sortOrder": zod.number()
+})).optional(),
   "settings": zod.object({
   "storeName": zod.string().optional(),
   "storeNameAr": zod.string().optional(),
   "logoUrl": zod.string().nullish(),
+  "mainLogoUrl": zod.string().nullish(),
+  "darkBackgroundLogoUrl": zod.string().nullish(),
+  "lightBackgroundLogoUrl": zod.string().nullish(),
+  "mobileLogoUrl": zod.string().nullish(),
+  "faviconUrl": zod.string().nullish(),
+  "adminLogoUrl": zod.string().nullish(),
+  "socialImageUrl": zod.string().nullish(),
   "whatsappNumber": zod.string().nullish(),
   "phoneNumber": zod.string().nullish(),
   "email": zod.string().nullish(),
@@ -935,6 +1592,9 @@ export const GetHomepageContentResponse = zod.object({
   "telegramUrl": zod.string().nullish(),
   "announcementBar": zod.string().nullish(),
   "announcementEnabled": zod.boolean().optional(),
+  "announcementLink": zod.string().nullish(),
+  "announcementStartAt": zod.coerce.date().nullish(),
+  "announcementEndAt": zod.coerce.date().nullish(),
   "seoTitle": zod.string().nullish(),
   "seoDescription": zod.string().nullish()
 }).optional()
@@ -966,7 +1626,8 @@ export const GetAdminDashboardSummaryResponse = zod.object({
   "lowStockCount": zod.number().optional(),
   "outOfStockCount": zod.number().optional(),
   "avgOrderValue": zod.number().optional(),
-  "totalCustomers": zod.number().optional()
+  "totalCustomers": zod.number().optional(),
+  "pendingPaymentCount": zod.number().optional()
 })
 
 
@@ -991,6 +1652,10 @@ export const GetAdminRecentOrdersResponseItem = zod.object({
   "status": zod.string(),
   "paymentStatus": zod.string().optional(),
   "paymentMethod": zod.string().optional(),
+  "paymentPlan": zod.string().nullish(),
+  "transferMethod": zod.string().nullish(),
+  "paidAmount": zod.number().optional(),
+  "remainingAmount": zod.number().nullish(),
   "total": zod.number(),
   "itemCount": zod.number().optional(),
   "createdAt": zod.string()
@@ -1040,6 +1705,7 @@ export const AdminListProductsResponse = zod.object({
   "images": zod.array(zod.string()).optional(),
   "price": zod.number(),
   "oldPrice": zod.number().nullish(),
+  "purchasePrice": zod.number().nullish(),
   "sku": zod.string().nullish(),
   "barcode": zod.string().nullish(),
   "status": zod.enum(['active', 'draft', 'archived']),
@@ -1050,15 +1716,24 @@ export const AdminListProductsResponse = zod.object({
   "gradeId": zod.number().nullish(),
   "subjectId": zod.number().nullish(),
   "publisherId": zod.number().nullish(),
+  "categoryId": zod.number().nullish(),
   "educationType": zod.string().nullish(),
   "bookType": zod.string().nullish(),
   "edition": zod.string().nullish(),
   "schoolYear": zod.string().nullish(),
+  "author": zod.string().nullish(),
   "isBestSeller": zod.boolean().optional(),
   "isFeatured": zod.boolean().optional(),
   "isNew": zod.boolean().optional(),
   "isRevision": zod.boolean().optional(),
   "isBundle": zod.boolean().optional(),
+  "isOffer": zod.boolean().optional(),
+  "freeShipping": zod.boolean().optional(),
+  "freeShippingStartAt": zod.coerce.date().nullish(),
+  "freeShippingEndAt": zod.coerce.date().nullish(),
+  "freeShippingBadgeText": zod.string().nullish(),
+  "seoTitle": zod.string().nullish(),
+  "seoDescription": zod.string().nullish(),
   "sortOrder": zod.number().optional(),
   "internalNotes": zod.string().nullish(),
   "createdAt": zod.string().optional(),
@@ -1079,6 +1754,7 @@ export const AdminCreateProductBody = zod.object({
   "images": zod.array(zod.string()).optional(),
   "price": zod.number(),
   "oldPrice": zod.number().optional(),
+  "purchasePrice": zod.number().optional(),
   "sku": zod.string().optional(),
   "barcode": zod.string().optional(),
   "status": zod.enum(['active', 'draft', 'archived']).optional(),
@@ -1088,6 +1764,8 @@ export const AdminCreateProductBody = zod.object({
   "gradeId": zod.number().optional(),
   "subjectId": zod.number().optional(),
   "publisherId": zod.number().optional(),
+  "categoryId": zod.number().optional(),
+  "author": zod.string().optional(),
   "educationType": zod.string().optional(),
   "bookType": zod.string().optional(),
   "edition": zod.string().optional(),
@@ -1097,6 +1775,13 @@ export const AdminCreateProductBody = zod.object({
   "isNew": zod.boolean().optional(),
   "isRevision": zod.boolean().optional(),
   "isBundle": zod.boolean().optional(),
+  "isOffer": zod.boolean().optional(),
+  "freeShipping": zod.boolean().optional(),
+  "freeShippingStartAt": zod.coerce.date().optional(),
+  "freeShippingEndAt": zod.coerce.date().optional(),
+  "freeShippingBadgeText": zod.string().optional(),
+  "seoTitle": zod.string().optional(),
+  "seoDescription": zod.string().optional(),
   "internalNotes": zod.string().optional()
 })
 
@@ -1111,6 +1796,7 @@ export const AdminCreateProductResponse = zod.object({
   "images": zod.array(zod.string()).optional(),
   "price": zod.number(),
   "oldPrice": zod.number().nullish(),
+  "purchasePrice": zod.number().nullish(),
   "sku": zod.string().nullish(),
   "barcode": zod.string().nullish(),
   "status": zod.enum(['active', 'draft', 'archived']),
@@ -1121,15 +1807,24 @@ export const AdminCreateProductResponse = zod.object({
   "gradeId": zod.number().nullish(),
   "subjectId": zod.number().nullish(),
   "publisherId": zod.number().nullish(),
+  "categoryId": zod.number().nullish(),
   "educationType": zod.string().nullish(),
   "bookType": zod.string().nullish(),
   "edition": zod.string().nullish(),
   "schoolYear": zod.string().nullish(),
+  "author": zod.string().nullish(),
   "isBestSeller": zod.boolean().optional(),
   "isFeatured": zod.boolean().optional(),
   "isNew": zod.boolean().optional(),
   "isRevision": zod.boolean().optional(),
   "isBundle": zod.boolean().optional(),
+  "isOffer": zod.boolean().optional(),
+  "freeShipping": zod.boolean().optional(),
+  "freeShippingStartAt": zod.coerce.date().nullish(),
+  "freeShippingEndAt": zod.coerce.date().nullish(),
+  "freeShippingBadgeText": zod.string().nullish(),
+  "seoTitle": zod.string().nullish(),
+  "seoDescription": zod.string().nullish(),
   "sortOrder": zod.number().optional(),
   "internalNotes": zod.string().nullish(),
   "createdAt": zod.string().optional(),
@@ -1152,6 +1847,7 @@ export const AdminGetProductResponse = zod.object({
   "images": zod.array(zod.string()).optional(),
   "price": zod.number(),
   "oldPrice": zod.number().nullish(),
+  "purchasePrice": zod.number().nullish(),
   "sku": zod.string().nullish(),
   "barcode": zod.string().nullish(),
   "status": zod.enum(['active', 'draft', 'archived']),
@@ -1162,15 +1858,24 @@ export const AdminGetProductResponse = zod.object({
   "gradeId": zod.number().nullish(),
   "subjectId": zod.number().nullish(),
   "publisherId": zod.number().nullish(),
+  "categoryId": zod.number().nullish(),
   "educationType": zod.string().nullish(),
   "bookType": zod.string().nullish(),
   "edition": zod.string().nullish(),
   "schoolYear": zod.string().nullish(),
+  "author": zod.string().nullish(),
   "isBestSeller": zod.boolean().optional(),
   "isFeatured": zod.boolean().optional(),
   "isNew": zod.boolean().optional(),
   "isRevision": zod.boolean().optional(),
   "isBundle": zod.boolean().optional(),
+  "isOffer": zod.boolean().optional(),
+  "freeShipping": zod.boolean().optional(),
+  "freeShippingStartAt": zod.coerce.date().nullish(),
+  "freeShippingEndAt": zod.coerce.date().nullish(),
+  "freeShippingBadgeText": zod.string().nullish(),
+  "seoTitle": zod.string().nullish(),
+  "seoDescription": zod.string().nullish(),
   "sortOrder": zod.number().optional(),
   "internalNotes": zod.string().nullish(),
   "createdAt": zod.string().optional(),
@@ -1191,6 +1896,7 @@ export const AdminUpdateProductBody = zod.object({
   "images": zod.array(zod.string()).optional(),
   "price": zod.number().optional(),
   "oldPrice": zod.number().optional(),
+  "purchasePrice": zod.number().optional(),
   "sku": zod.string().optional(),
   "barcode": zod.string().optional(),
   "status": zod.string().optional(),
@@ -1199,6 +1905,8 @@ export const AdminUpdateProductBody = zod.object({
   "gradeId": zod.number().optional(),
   "subjectId": zod.number().optional(),
   "publisherId": zod.number().optional(),
+  "categoryId": zod.number().optional(),
+  "author": zod.string().optional(),
   "educationType": zod.string().optional(),
   "bookType": zod.string().optional(),
   "edition": zod.string().optional(),
@@ -1208,6 +1916,13 @@ export const AdminUpdateProductBody = zod.object({
   "isNew": zod.boolean().optional(),
   "isRevision": zod.boolean().optional(),
   "isBundle": zod.boolean().optional(),
+  "isOffer": zod.boolean().optional(),
+  "freeShipping": zod.boolean().optional(),
+  "freeShippingStartAt": zod.coerce.date().optional(),
+  "freeShippingEndAt": zod.coerce.date().optional(),
+  "freeShippingBadgeText": zod.string().optional(),
+  "seoTitle": zod.string().optional(),
+  "seoDescription": zod.string().optional(),
   "internalNotes": zod.string().optional()
 })
 
@@ -1222,6 +1937,7 @@ export const AdminUpdateProductResponse = zod.object({
   "images": zod.array(zod.string()).optional(),
   "price": zod.number(),
   "oldPrice": zod.number().nullish(),
+  "purchasePrice": zod.number().nullish(),
   "sku": zod.string().nullish(),
   "barcode": zod.string().nullish(),
   "status": zod.enum(['active', 'draft', 'archived']),
@@ -1232,15 +1948,24 @@ export const AdminUpdateProductResponse = zod.object({
   "gradeId": zod.number().nullish(),
   "subjectId": zod.number().nullish(),
   "publisherId": zod.number().nullish(),
+  "categoryId": zod.number().nullish(),
   "educationType": zod.string().nullish(),
   "bookType": zod.string().nullish(),
   "edition": zod.string().nullish(),
   "schoolYear": zod.string().nullish(),
+  "author": zod.string().nullish(),
   "isBestSeller": zod.boolean().optional(),
   "isFeatured": zod.boolean().optional(),
   "isNew": zod.boolean().optional(),
   "isRevision": zod.boolean().optional(),
   "isBundle": zod.boolean().optional(),
+  "isOffer": zod.boolean().optional(),
+  "freeShipping": zod.boolean().optional(),
+  "freeShippingStartAt": zod.coerce.date().nullish(),
+  "freeShippingEndAt": zod.coerce.date().nullish(),
+  "freeShippingBadgeText": zod.string().nullish(),
+  "seoTitle": zod.string().nullish(),
+  "seoDescription": zod.string().nullish(),
   "sortOrder": zod.number().optional(),
   "internalNotes": zod.string().nullish(),
   "createdAt": zod.string().optional(),
@@ -1276,6 +2001,7 @@ export const AdminUpdateProductStockResponse = zod.object({
   "images": zod.array(zod.string()).optional(),
   "price": zod.number(),
   "oldPrice": zod.number().nullish(),
+  "purchasePrice": zod.number().nullish(),
   "sku": zod.string().nullish(),
   "barcode": zod.string().nullish(),
   "status": zod.enum(['active', 'draft', 'archived']),
@@ -1286,15 +2012,24 @@ export const AdminUpdateProductStockResponse = zod.object({
   "gradeId": zod.number().nullish(),
   "subjectId": zod.number().nullish(),
   "publisherId": zod.number().nullish(),
+  "categoryId": zod.number().nullish(),
   "educationType": zod.string().nullish(),
   "bookType": zod.string().nullish(),
   "edition": zod.string().nullish(),
   "schoolYear": zod.string().nullish(),
+  "author": zod.string().nullish(),
   "isBestSeller": zod.boolean().optional(),
   "isFeatured": zod.boolean().optional(),
   "isNew": zod.boolean().optional(),
   "isRevision": zod.boolean().optional(),
   "isBundle": zod.boolean().optional(),
+  "isOffer": zod.boolean().optional(),
+  "freeShipping": zod.boolean().optional(),
+  "freeShippingStartAt": zod.coerce.date().nullish(),
+  "freeShippingEndAt": zod.coerce.date().nullish(),
+  "freeShippingBadgeText": zod.string().nullish(),
+  "seoTitle": zod.string().nullish(),
+  "seoDescription": zod.string().nullish(),
   "sortOrder": zod.number().optional(),
   "internalNotes": zod.string().nullish(),
   "createdAt": zod.string().optional(),
@@ -1326,6 +2061,10 @@ export const AdminListOrdersResponse = zod.object({
   "status": zod.string(),
   "paymentStatus": zod.string().optional(),
   "paymentMethod": zod.string().optional(),
+  "paymentPlan": zod.string().nullish(),
+  "transferMethod": zod.string().nullish(),
+  "paidAmount": zod.number().optional(),
+  "remainingAmount": zod.number().nullish(),
   "total": zod.number(),
   "itemCount": zod.number().optional(),
   "createdAt": zod.string()
@@ -1346,6 +2085,11 @@ export const AdminGetOrderResponse = zod.object({
   "status": zod.string(),
   "paymentStatus": zod.string(),
   "paymentMethod": zod.string().optional(),
+  "paymentPlan": zod.string().nullish(),
+  "transferMethod": zod.string().nullish(),
+  "requiredPaymentAmount": zod.number().nullish(),
+  "paidAmount": zod.number().optional(),
+  "remainingAmount": zod.number().nullish(),
   "customerName": zod.string().optional(),
   "mobile": zod.string().optional(),
   "altMobile": zod.string().nullish(),
@@ -1411,6 +2155,11 @@ export const AdminUpdateOrderResponse = zod.object({
   "status": zod.string(),
   "paymentStatus": zod.string(),
   "paymentMethod": zod.string().optional(),
+  "paymentPlan": zod.string().nullish(),
+  "transferMethod": zod.string().nullish(),
+  "requiredPaymentAmount": zod.number().nullish(),
+  "paidAmount": zod.number().optional(),
+  "remainingAmount": zod.number().nullish(),
   "customerName": zod.string().optional(),
   "mobile": zod.string().optional(),
   "altMobile": zod.string().nullish(),
@@ -1468,6 +2217,11 @@ export const AdminUpdateOrderStatusResponse = zod.object({
   "status": zod.string(),
   "paymentStatus": zod.string(),
   "paymentMethod": zod.string().optional(),
+  "paymentPlan": zod.string().nullish(),
+  "transferMethod": zod.string().nullish(),
+  "requiredPaymentAmount": zod.number().nullish(),
+  "paidAmount": zod.number().optional(),
+  "remainingAmount": zod.number().nullish(),
   "customerName": zod.string().optional(),
   "mobile": zod.string().optional(),
   "altMobile": zod.string().nullish(),
@@ -1523,6 +2277,11 @@ export const AdminHandleCancellationResponse = zod.object({
   "status": zod.string(),
   "paymentStatus": zod.string(),
   "paymentMethod": zod.string().optional(),
+  "paymentPlan": zod.string().nullish(),
+  "transferMethod": zod.string().nullish(),
+  "requiredPaymentAmount": zod.number().nullish(),
+  "paidAmount": zod.number().optional(),
+  "remainingAmount": zod.number().nullish(),
   "customerName": zod.string().optional(),
   "mobile": zod.string().optional(),
   "altMobile": zod.string().nullish(),
@@ -2002,6 +2761,9 @@ export const AdminUpdateSiteSettingsBody = zod.object({
   "telegramUrl": zod.string().optional(),
   "announcementBar": zod.string().optional(),
   "announcementEnabled": zod.boolean().optional(),
+  "announcementLink": zod.string().optional(),
+  "announcementStartAt": zod.coerce.date().optional(),
+  "announcementEndAt": zod.coerce.date().optional(),
   "seoTitle": zod.string().optional(),
   "seoDescription": zod.string().optional()
 })
@@ -2010,6 +2772,13 @@ export const AdminUpdateSiteSettingsResponse = zod.object({
   "storeName": zod.string().optional(),
   "storeNameAr": zod.string().optional(),
   "logoUrl": zod.string().nullish(),
+  "mainLogoUrl": zod.string().nullish(),
+  "darkBackgroundLogoUrl": zod.string().nullish(),
+  "lightBackgroundLogoUrl": zod.string().nullish(),
+  "mobileLogoUrl": zod.string().nullish(),
+  "faviconUrl": zod.string().nullish(),
+  "adminLogoUrl": zod.string().nullish(),
+  "socialImageUrl": zod.string().nullish(),
   "whatsappNumber": zod.string().nullish(),
   "phoneNumber": zod.string().nullish(),
   "email": zod.string().nullish(),
@@ -2020,6 +2789,9 @@ export const AdminUpdateSiteSettingsResponse = zod.object({
   "telegramUrl": zod.string().nullish(),
   "announcementBar": zod.string().nullish(),
   "announcementEnabled": zod.boolean().optional(),
+  "announcementLink": zod.string().nullish(),
+  "announcementStartAt": zod.coerce.date().nullish(),
+  "announcementEndAt": zod.coerce.date().nullish(),
   "seoTitle": zod.string().nullish(),
   "seoDescription": zod.string().nullish()
 })
@@ -2030,9 +2802,17 @@ export const AdminListBannersResponseItem = zod.object({
   "imageUrl": zod.string(),
   "titleAr": zod.string().nullish(),
   "subtitleAr": zod.string().nullish(),
+  "badgeText": zod.string().nullish(),
+  "primaryButtonText": zod.string().nullish(),
+  "primaryButtonUrl": zod.string().nullish(),
+  "secondaryButtonText": zod.string().nullish(),
+  "secondaryButtonUrl": zod.string().nullish(),
+  "textAlignment": zod.enum(['right', 'center', 'left']),
   "linkUrl": zod.string().nullish(),
   "sortOrder": zod.number(),
-  "isActive": zod.boolean()
+  "isActive": zod.boolean(),
+  "startAt": zod.coerce.date().nullish(),
+  "endAt": zod.coerce.date().nullish()
 })
 export const AdminListBannersResponse = zod.array(AdminListBannersResponseItem)
 
@@ -2041,9 +2821,17 @@ export const AdminCreateBannerBody = zod.object({
   "imageUrl": zod.string(),
   "titleAr": zod.string().optional(),
   "subtitleAr": zod.string().optional(),
+  "badgeText": zod.string().optional(),
+  "primaryButtonText": zod.string().optional(),
+  "primaryButtonUrl": zod.string().optional(),
+  "secondaryButtonText": zod.string().optional(),
+  "secondaryButtonUrl": zod.string().optional(),
+  "textAlignment": zod.enum(['right', 'center', 'left']).optional(),
   "linkUrl": zod.string().optional(),
   "sortOrder": zod.number().optional(),
-  "isActive": zod.boolean().optional()
+  "isActive": zod.boolean().optional(),
+  "startAt": zod.coerce.date().optional(),
+  "endAt": zod.coerce.date().optional()
 })
 
 export const AdminCreateBannerResponse = zod.object({
@@ -2051,9 +2839,17 @@ export const AdminCreateBannerResponse = zod.object({
   "imageUrl": zod.string(),
   "titleAr": zod.string().nullish(),
   "subtitleAr": zod.string().nullish(),
+  "badgeText": zod.string().nullish(),
+  "primaryButtonText": zod.string().nullish(),
+  "primaryButtonUrl": zod.string().nullish(),
+  "secondaryButtonText": zod.string().nullish(),
+  "secondaryButtonUrl": zod.string().nullish(),
+  "textAlignment": zod.enum(['right', 'center', 'left']),
   "linkUrl": zod.string().nullish(),
   "sortOrder": zod.number(),
-  "isActive": zod.boolean()
+  "isActive": zod.boolean(),
+  "startAt": zod.coerce.date().nullish(),
+  "endAt": zod.coerce.date().nullish()
 })
 
 
@@ -2065,9 +2861,17 @@ export const AdminUpdateBannerBody = zod.object({
   "imageUrl": zod.string().optional(),
   "titleAr": zod.string().optional(),
   "subtitleAr": zod.string().optional(),
+  "badgeText": zod.string().optional(),
+  "primaryButtonText": zod.string().optional(),
+  "primaryButtonUrl": zod.string().optional(),
+  "secondaryButtonText": zod.string().optional(),
+  "secondaryButtonUrl": zod.string().optional(),
+  "textAlignment": zod.enum(['right', 'center', 'left']).optional(),
   "linkUrl": zod.string().optional(),
   "sortOrder": zod.number().optional(),
-  "isActive": zod.boolean().optional()
+  "isActive": zod.boolean().optional(),
+  "startAt": zod.coerce.date().optional(),
+  "endAt": zod.coerce.date().optional()
 })
 
 export const AdminUpdateBannerResponse = zod.object({
@@ -2075,9 +2879,17 @@ export const AdminUpdateBannerResponse = zod.object({
   "imageUrl": zod.string(),
   "titleAr": zod.string().nullish(),
   "subtitleAr": zod.string().nullish(),
+  "badgeText": zod.string().nullish(),
+  "primaryButtonText": zod.string().nullish(),
+  "primaryButtonUrl": zod.string().nullish(),
+  "secondaryButtonText": zod.string().nullish(),
+  "secondaryButtonUrl": zod.string().nullish(),
+  "textAlignment": zod.enum(['right', 'center', 'left']),
   "linkUrl": zod.string().nullish(),
   "sortOrder": zod.number(),
-  "isActive": zod.boolean()
+  "isActive": zod.boolean(),
+  "startAt": zod.coerce.date().nullish(),
+  "endAt": zod.coerce.date().nullish()
 })
 
 

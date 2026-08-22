@@ -15,6 +15,13 @@ export interface AdminOrderSummary {
   status: string;
   paymentStatus?: string;
   paymentMethod?: string;
+  /** @nullable */
+  paymentPlan?: string | null;
+  /** @nullable */
+  transferMethod?: string | null;
+  paidAmount?: number;
+  /** @nullable */
+  remainingAmount?: number | null;
   total: number;
   itemCount?: number;
   createdAt: string;

@@ -5,12 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search as SearchIcon, ArrowRight, BookOpen, Clock } from "lucide-react";
+import { Search as SearchIcon, BookOpen, Clock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import useDebounce from "@/hooks/use-debounce"; // Will create this
+import { trackCommerceEvent } from "@/lib/analytics";
 
 export default function Search() {
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const searchParams = new URLSearchParams(window.location.search);
   const initialQuery = searchParams.get("q") || "";
   
@@ -22,7 +23,7 @@ export default function Search() {
   useEffect(() => {
     const saved = localStorage.getItem("maktaba_recent_searches");
     if (saved) {
-      try { setRecentSearches(JSON.parse(saved)); } catch (e) {}
+      try { setRecentSearches(JSON.parse(saved)); } catch { setRecentSearches([]); }
     }
   }, []);
 
@@ -36,6 +37,7 @@ export default function Search() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim()) {
+      trackCommerceEvent("Search", { searchTerm: query.trim() });
       saveRecentSearch(query);
       setLocation(`/search?q=${encodeURIComponent(query)}`);
       setIsFocused(false);
@@ -43,6 +45,7 @@ export default function Search() {
   };
 
   const handleSuggestionClick = (term: string) => {
+    trackCommerceEvent("Search", { searchTerm: term });
     setQuery(term);
     saveRecentSearch(term);
     setLocation(`/search?q=${encodeURIComponent(term)}`);
@@ -51,12 +54,12 @@ export default function Search() {
 
   const { data: suggestionsData, isLoading: isLoadingSuggestions } = useGetSearchSuggestions(
     { q: debouncedQuery },
-    { query: { enabled: debouncedQuery.length > 1 && isFocused } }
+    { query: { queryKey: ['/api/search/suggestions', { q: debouncedQuery }], enabled: debouncedQuery.length > 1 && isFocused } }
   );
 
   const { data: resultsData, isLoading: isLoadingResults } = useListProducts(
     { q: initialQuery },
-    { query: { enabled: !!initialQuery && !isFocused } }
+    { query: { queryKey: ['/api/products', { q: initialQuery }], enabled: !!initialQuery && !isFocused } }
   );
 
   return (
@@ -66,6 +69,7 @@ export default function Search() {
           <div className="relative">
             <Input 
               autoFocus
+              aria-label="البحث عن كتاب أو ناشر أو مؤلف"
               placeholder="ابحث عن كتاب، دار نشر، أو مؤلف..." 
               className="h-14 pl-12 pr-4 text-lg rounded-2xl shadow-sm border-primary/20 focus-visible:ring-primary/20"
               value={query}
@@ -77,6 +81,8 @@ export default function Search() {
               type="submit" 
               size="icon" 
               variant="ghost" 
+              aria-label="بحث"
+              title="بحث"
               className="absolute left-2 top-2 h-10 w-10 text-primary hover:bg-primary/10"
             >
               <SearchIcon className="h-5 w-5" />
