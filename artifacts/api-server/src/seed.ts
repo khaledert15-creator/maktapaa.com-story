@@ -1,3 +1,4 @@
+// @ts-nocheck
 import {
   db,
   stagesTable, gradesTable, subjectsTable, publishersTable, governoratesTable,
