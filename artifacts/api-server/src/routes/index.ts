@@ -1,18 +1,18 @@
 // @ts-nocheck
 import { Router } from "express";
-import healthRouter from "./health";
-import authRouter from "./auth";
-import productsRouter from "./products";
-import contentRouter from "./content";
-import shippingRouter from "./shipping";
-import cartRouter from "./cart";
-import ordersRouter from "./orders";
-import adminDashboardRouter from "./admin/dashboard";
-import adminProductsRouter from "./admin/products";
-import adminOrdersRouter from "./admin/orders";
-import adminCustomersRouter from "./admin/customers";
-import adminCouponsRouter from "./admin/coupons";
-import adminReportsRouter from "./admin/reports";
+import healthRouter from "./health.js";
+import authRouter from "./auth.js";
+import productsRouter from "./products.js";
+import contentRouter from "./content.js";
+import shippingRouter from "./shipping.js";
+import cartRouter from "./cart.js";
+import ordersRouter from "./orders.js";
+import adminDashboardRouter from "./admin/dashboard.js";
+import adminProductsRouter from "./admin/products.js";
+import adminOrdersRouter from "./admin/orders.js";
+import adminCustomersRouter from "./admin/customers.js";
+import adminCouponsRouter from "./admin/coupons.js";
+import adminReportsRouter from "./admin/reports.js";
 
 const router = Router();
 

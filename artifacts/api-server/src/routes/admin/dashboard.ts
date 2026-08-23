@@ -2,7 +2,7 @@
 import { Router } from "express";
 import { db, ordersTable, productsTable, customersTable } from "@workspace/db";
 import { eq, gte, sql, and, lte } from "drizzle-orm";
-import { requireAdminAuth } from "../../lib/auth";
+import { requireAdminAuth } from "../../lib/auth.js";
 
 const router = Router();
 router.use(requireAdminAuth);
