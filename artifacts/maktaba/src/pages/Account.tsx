@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
-import { useGetMyOrders, useListFavorites, useLogoutCustomer } from "@workspace/api-client-react";
+import { useGetMyOrders, useListFavorites, useLogoutCustomer, getGetMyOrdersQueryKey, getListFavoritesQueryKey } from "@workspace/api-client-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,14 +24,14 @@ export default function Account() {
     }
   });
 
+  const orderParams = { page: 1, limit: 10 };
   const { data: ordersData, isLoading: isLoadingOrders } = useGetMyOrders(
-    { page: 1, limit: 10 },
-    { query: { enabled: !!customer } }
+    orderParams,
+    { query: { queryKey: getGetMyOrdersQueryKey(orderParams), enabled: !!customer } }
   );
 
   const { data: favoritesData, isLoading: isLoadingFavs } = useListFavorites(
-    undefined,
-    { query: { enabled: !!customer && defaultTab === 'favorites' } }
+    { query: { queryKey: getListFavoritesQueryKey(), enabled: !!customer && defaultTab === 'favorites' } }
   );
 
   // Auth Guard

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link } from "wouter";
-import { useGetProduct, useGetRelatedProducts, useAddToCart } from "@workspace/api-client-react";
+import { useGetProduct, useGetRelatedProducts, useAddToCart, getGetRelatedProductsQueryKey } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,7 +13,10 @@ import { getGetCartQueryKey } from "@workspace/api-client-react";
 export default function ProductDetail() {
   const { slug } = useParams<{ slug: string }>();
   const { data: product, isLoading, isError } = useGetProduct(slug);
-  const { data: relatedProducts } = useGetRelatedProducts(product?.id || 0, { query: { enabled: !!product?.id } });
+  const relatedProductId = product?.id || 0;
+  const { data: relatedProducts } = useGetRelatedProducts(relatedProductId, {
+    query: { queryKey: getGetRelatedProductsQueryKey(relatedProductId), enabled: !!product?.id },
+  });
   
   const [quantity, setQuantity] = useState(1);
   const { toast } = useToast();

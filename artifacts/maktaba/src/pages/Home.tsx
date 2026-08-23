@@ -1,21 +1,176 @@
-import { Link } from "wouter";
-import { useListFeaturedProducts, useListCategories, useListStages, useListPublishers, useGetSiteSettings, useListBanners } from "@workspace/api-client-react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { Link, useLocation } from "wouter";
+import { useListFeaturedProducts, useListGrades, useListProducts, useListPublishers, useListStages, useListSubjects } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ChevronLeft, Truck, ShieldCheck, Package, BookOpen } from "lucide-react";
+import { ChevronLeft, Truck, ShieldCheck, Package, BookOpen, Search, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 export default function Home() {
+  const [, setLocation] = useLocation();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedGradeId, setSelectedGradeId] = useState<number | undefined>(() => {
+    const savedGrade = localStorage.getItem("maktaba_selected_grade");
+    return savedGrade ? Number(savedGrade) : undefined;
+  });
+  const [selectedSubjectId, setSelectedSubjectId] = useState<number | undefined>();
   const { data: featuredProducts, isLoading: isLoadingFeatured } = useListFeaturedProducts();
   const { data: stages, isLoading: isLoadingStages } = useListStages();
   const { data: publishers, isLoading: isLoadingPublishers } = useListPublishers();
-  const { data: banners, isLoading: isLoadingBanners } = useListBanners();
+  const { data: grades, isLoading: isLoadingGrades } = useListGrades();
+  const { data: subjects, isLoading: isLoadingSubjects } = useListSubjects(
+    selectedGradeId ? { gradeId: selectedGradeId } : undefined,
+  );
+  const { data: tailoredProducts, isLoading: isLoadingTailored } = useListProducts({
+    page: 1,
+    limit: 8,
+    gradeId: selectedGradeId,
+    subjectId: selectedSubjectId,
+    sortBy: "best_selling",
+  });
+
+  useEffect(() => {
+    if (selectedGradeId) {
+      localStorage.setItem("maktaba_selected_grade", String(selectedGradeId));
+    }
+  }, [selectedGradeId]);
+
+  const secondaryGrades = useMemo(() => {
+    const relevantGrades = grades?.filter((grade) =>
+      /ثانوي|بكالوريا/.test(grade.nameAr),
+    );
+    return relevantGrades?.length ? relevantGrades : grades;
+  }, [grades]);
+
+  const selectedGrade = grades?.find((grade) => grade.id === selectedGradeId);
+  const selectedSubject = subjects?.find((subject) => subject.id === selectedSubjectId);
+
+  const handleSearch = (event: FormEvent) => {
+    event.preventDefault();
+    const query = searchQuery.trim();
+    if (query) setLocation(`/search?q=${encodeURIComponent(query)}`);
+  };
+
+  const selectGrade = (gradeId: number) => {
+    setSelectedGradeId(gradeId);
+    setSelectedSubjectId(undefined);
+  };
 
   return (
-    <div className="flex flex-col gap-12 pb-12">
+    <div className="flex flex-col gap-9 md:gap-12 pb-12">
+      {/* Mobile-first discovery: get students to relevant books in one viewport. */}
+      <section className="md:hidden order-1 px-4 pt-5">
+        <div className="relative overflow-hidden rounded-[1.75rem] border border-secondary/15 bg-gradient-to-br from-white via-sky-50 to-blue-100/70 p-4 shadow-sm">
+          <div className="absolute -left-10 -top-12 h-32 w-32 rounded-full bg-secondary/10 blur-2xl" />
+          <div className="relative">
+            <div className="mb-3 flex items-center gap-2">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary text-white shadow-sm shadow-secondary/25">
+                <Sparkles className="h-4 w-4" />
+              </span>
+              <div>
+                <h1 className="text-xl font-black text-primary">وصل لكتبك بسرعة</h1>
+                <p className="text-xs text-muted-foreground">ابحث أو اختار صفك وشاهد الكتب فورًا</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleSearch} className="relative mb-5">
+              <input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="اسم الكتاب، المادة أو دار النشر..."
+                aria-label="ابحث عن كتاب"
+                className="h-12 w-full rounded-2xl border border-secondary/20 bg-white pr-4 pl-12 text-sm shadow-sm outline-none transition focus:border-secondary focus:ring-4 focus:ring-secondary/10"
+              />
+              <button
+                type="submit"
+                aria-label="بحث"
+                className="absolute left-1.5 top-1.5 flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-white transition active:scale-95"
+              >
+                <Search className="h-4 w-4" />
+              </button>
+            </form>
+
+            <div className="mb-4">
+              <div className="mb-2 flex items-center justify-between">
+                <h2 className="text-sm font-extrabold">اختار صفك</h2>
+                {selectedGradeId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedGradeId(undefined);
+                      setSelectedSubjectId(undefined);
+                      localStorage.removeItem("maktaba_selected_grade");
+                    }}
+                    className="text-[11px] font-bold text-secondary"
+                  >
+                    عرض الكل
+                  </button>
+                )}
+              </div>
+              <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {isLoadingGrades ? (
+                  Array(4).fill(0).map((_, index) => <Skeleton key={index} className="h-10 w-28 shrink-0 rounded-full" />)
+                ) : (
+                  secondaryGrades?.map((grade) => (
+                    <button
+                      key={grade.id}
+                      type="button"
+                      onClick={() => selectGrade(grade.id)}
+                      aria-pressed={selectedGradeId === grade.id}
+                      className={`h-10 shrink-0 rounded-full border px-4 text-xs font-bold transition-all active:scale-95 ${
+                        selectedGradeId === grade.id
+                          ? "border-primary bg-primary text-white shadow-md shadow-primary/15"
+                          : "border-border bg-white text-foreground shadow-sm"
+                      }`}
+                    >
+                      {grade.nameAr}
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div>
+              <h2 className="mb-2 text-sm font-extrabold">اختار المادة</h2>
+              <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <button
+                  type="button"
+                  onClick={() => setSelectedSubjectId(undefined)}
+                  aria-pressed={!selectedSubjectId}
+                  className={`h-10 shrink-0 rounded-full border px-4 text-xs font-bold transition-all active:scale-95 ${
+                    !selectedSubjectId ? "border-secondary bg-secondary text-white" : "border-border bg-white"
+                  }`}
+                >
+                  كل المواد
+                </button>
+                {isLoadingSubjects ? (
+                  Array(4).fill(0).map((_, index) => <Skeleton key={index} className="h-10 w-24 shrink-0 rounded-full" />)
+                ) : (
+                  subjects?.map((subject) => (
+                    <button
+                      key={subject.id}
+                      type="button"
+                      onClick={() => setSelectedSubjectId(subject.id)}
+                      aria-pressed={selectedSubjectId === subject.id}
+                      className={`h-10 shrink-0 rounded-full border px-4 text-xs font-bold transition-all active:scale-95 ${
+                        selectedSubjectId === subject.id
+                          ? "border-secondary bg-secondary text-white"
+                          : "border-border bg-white"
+                      }`}
+                    >
+                      {subject.nameAr}
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Hero Banner Area */}
-      <section className="bg-primary/5 py-8 md:py-16">
+      <section className="hidden md:block md:order-1 bg-primary/5 py-8 md:py-16">
         <div className="container mx-auto px-4 flex flex-col md:flex-row items-center gap-8">
           <div className="flex-1 space-y-6 text-center md:text-right">
             <Badge variant="outline" className="bg-white px-3 py-1 text-sm border-secondary text-secondary">
@@ -58,63 +213,122 @@ export default function Home() {
       </section>
 
       {/* Features */}
-      <section className="container mx-auto px-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
-          <Card className="border-none shadow-sm bg-blue-50/50">
-            <CardContent className="p-6 flex flex-col items-center text-center gap-4">
-              <div className="h-12 w-12 rounded-full bg-secondary/10 text-secondary flex items-center justify-center">
+      <section className="container mx-auto px-4 order-3 md:order-2">
+        <div className="flex gap-2 overflow-x-auto pb-1 md:grid md:grid-cols-4 md:gap-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <Card className="w-52 shrink-0 border-none bg-blue-50/70 shadow-sm md:w-auto">
+            <CardContent className="flex items-center gap-3 p-3 text-right md:flex-col md:p-6 md:text-center md:gap-4">
+              <div className="h-10 w-10 shrink-0 rounded-full bg-secondary/10 text-secondary flex items-center justify-center md:h-12 md:w-12">
                 <Truck className="h-6 w-6" />
               </div>
-              <h3 className="font-bold">شحن لكل مصر</h3>
-              <p className="text-sm text-muted-foreground">نوصلك في أي محافظة لحد باب البيت</p>
+              <div><h3 className="text-sm font-bold md:text-base">شحن لكل مصر</h3>
+              <p className="text-[11px] text-muted-foreground md:text-sm">لحد باب البيت</p></div>
             </CardContent>
           </Card>
-          <Card className="border-none shadow-sm bg-amber-50/50">
-            <CardContent className="p-6 flex flex-col items-center text-center gap-4">
-              <div className="h-12 w-12 rounded-full bg-accent/10 text-accent flex items-center justify-center">
+          <Card className="w-52 shrink-0 border-none bg-amber-50/70 shadow-sm md:w-auto">
+            <CardContent className="flex items-center gap-3 p-3 text-right md:flex-col md:p-6 md:text-center md:gap-4">
+              <div className="h-10 w-10 shrink-0 rounded-full bg-accent/10 text-accent flex items-center justify-center md:h-12 md:w-12">
                 <ShieldCheck className="h-6 w-6" />
               </div>
-              <h3 className="font-bold">دفع عند الاستلام</h3>
-              <p className="text-sm text-muted-foreground">عاين طلبك الأول وبعدين ادفع</p>
+              <div><h3 className="text-sm font-bold md:text-base">دفع عند الاستلام</h3>
+              <p className="text-[11px] text-muted-foreground md:text-sm">استلم وبعدين ادفع</p></div>
             </CardContent>
           </Card>
-          <Card className="border-none shadow-sm bg-emerald-50/50">
-            <CardContent className="p-6 flex flex-col items-center text-center gap-4">
-              <div className="h-12 w-12 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+          <Card className="w-52 shrink-0 border-none bg-emerald-50/70 shadow-sm md:w-auto">
+            <CardContent className="flex items-center gap-3 p-3 text-right md:flex-col md:p-6 md:text-center md:gap-4">
+              <div className="h-10 w-10 shrink-0 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center md:h-12 md:w-12">
                 <Package className="h-6 w-6" />
               </div>
-              <h3 className="font-bold">كتبك في كرتونة</h3>
-              <p className="text-sm text-muted-foreground">تغليف ممتاز يحافظ على كتبك</p>
+              <div><h3 className="text-sm font-bold md:text-base">تغليف يحمي كتبك</h3>
+              <p className="text-[11px] text-muted-foreground md:text-sm">توصلك بحالة ممتازة</p></div>
             </CardContent>
           </Card>
-          <Card className="border-none shadow-sm bg-purple-50/50">
-            <CardContent className="p-6 flex flex-col items-center text-center gap-4">
-              <div className="h-12 w-12 rounded-full bg-purple-500/10 text-purple-600 flex items-center justify-center">
+          <Card className="w-52 shrink-0 border-none bg-purple-50/70 shadow-sm md:w-auto">
+            <CardContent className="flex items-center gap-3 p-3 text-right md:flex-col md:p-6 md:text-center md:gap-4">
+              <div className="h-10 w-10 shrink-0 rounded-full bg-purple-500/10 text-purple-600 flex items-center justify-center md:h-12 md:w-12">
                 <BookOpen className="h-6 w-6" />
               </div>
-              <h3 className="font-bold">أقوى الكتب</h3>
-              <p className="text-sm text-muted-foreground">أفضل دور النشر والمراجعات</p>
+              <div><h3 className="text-sm font-bold md:text-base">أحدث الطبعات</h3>
+              <p className="text-[11px] text-muted-foreground md:text-sm">من أفضل دور النشر</p></div>
             </CardContent>
           </Card>
         </div>
       </section>
 
       {/* Featured Products */}
-      <section className="container mx-auto px-4">
+      <section className="container mx-auto px-4 order-2 md:order-3">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h2 className="text-2xl md:text-3xl font-bold text-primary mb-2">أحدث وأقوى الكتب</h2>
-            <p className="text-muted-foreground">الكتب الأكثر طلباً هذا الأسبوع</p>
+            <h2 className="text-xl md:text-3xl font-bold text-primary mb-1 md:mb-2">
+              <span className="md:hidden">
+                {selectedSubject
+                  ? `كتب ${selectedSubject.nameAr}${selectedGrade ? ` — ${selectedGrade.nameAr}` : ""}`
+                  : selectedGrade
+                    ? `كتب ${selectedGrade.nameAr}`
+                    : "الأكثر طلبًا الآن"}
+              </span>
+              <span className="hidden md:inline">أحدث وأقوى الكتب</span>
+            </h2>
+            <p className="text-xs md:text-base text-muted-foreground">
+              {selectedGradeId ? "اختيارات مناسبة لك ومتاحة للطلب" : "الكتب الأكثر طلباً هذا الأسبوع"}
+            </p>
           </div>
           <Button variant="ghost" className="text-secondary" asChild>
-            <Link href="/catalog" className="flex items-center gap-1">
+            <Link
+              href={`/catalog${selectedGradeId || selectedSubjectId ? `?${new URLSearchParams({
+                ...(selectedGradeId ? { gradeId: String(selectedGradeId) } : {}),
+                ...(selectedSubjectId ? { subjectId: String(selectedSubjectId) } : {}),
+              }).toString()}` : ""}`}
+              className="flex items-center gap-1 px-2 md:px-4"
+            >
               عرض الكل
               <ChevronLeft className="h-4 w-4" />
             </Link>
           </Button>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
+        <div className="md:hidden -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {isLoadingTailored ? (
+            Array(4).fill(0).map((_, i) => (
+              <Card key={i} className="w-[43vw] max-w-44 shrink-0 overflow-hidden border-border/50">
+                <Skeleton className="aspect-[3/4] w-full rounded-none" />
+                <CardContent className="p-3 space-y-2"><Skeleton className="h-4 w-3/4" /><Skeleton className="h-5 w-1/2" /></CardContent>
+              </Card>
+            ))
+          ) : tailoredProducts?.items.length ? (
+            tailoredProducts.items.map((product) => (
+              <Link key={product.id} href={`/product/${product.slug}`} className="w-[43vw] max-w-44 shrink-0 snap-start">
+                <Card className="h-full overflow-hidden border-border/60 bg-white shadow-sm transition-all active:scale-[.98]">
+                  <div className="aspect-[3/4] bg-muted relative overflow-hidden">
+                    {product.coverImage ? (
+                      <img src={product.coverImage} alt={product.nameAr} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full flex-col items-center justify-center bg-primary/5 px-3 text-center text-primary/40">
+                        <BookOpen className="mb-2 h-10 w-10" />
+                        <span className="line-clamp-2 text-xs font-bold">{product.nameAr}</span>
+                      </div>
+                    )}
+                    {product.discountPercent && product.discountPercent > 0 ? (
+                      <Badge className="absolute right-2 top-2 bg-destructive text-[10px]">خصم {product.discountPercent}%</Badge>
+                    ) : null}
+                  </div>
+                  <CardContent className="p-3">
+                    <div className="mb-1 truncate text-[10px] text-muted-foreground">{product.publisher || "كتاب مدرسي"}</div>
+                    <h3 className="mb-2 line-clamp-2 min-h-9 text-xs font-extrabold leading-5">{product.nameAr}</h3>
+                    <span className="font-black text-primary">{product.price} ج.م</span>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))
+          ) : (
+            <div className="w-full rounded-2xl border border-dashed bg-muted/30 p-6 text-center">
+              <BookOpen className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
+              <p className="text-sm font-bold">لا توجد كتب لهذا الاختيار حاليًا</p>
+              <button type="button" onClick={() => setSelectedSubjectId(undefined)} className="mt-2 text-xs font-bold text-secondary">عرض كل المواد</button>
+            </div>
+          )}
+        </div>
+
+        <div className="hidden md:grid md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
           {isLoadingFeatured ? (
             Array(5).fill(0).map((_, i) => (
               <Card key={i} className="overflow-hidden border-border/50">
@@ -165,7 +379,7 @@ export default function Home() {
       </section>
 
       {/* Educational Stages */}
-      <section className="bg-muted/30 py-12 md:py-16">
+      <section className="hidden md:block bg-muted/30 py-12 md:py-16 order-4">
         <div className="container mx-auto px-4">
           <div className="text-center mb-10">
             <h2 className="text-2xl md:text-3xl font-bold text-primary mb-2">تصفح حسب المرحلة الدراسية</h2>
@@ -194,7 +408,7 @@ export default function Home() {
       </section>
 
       {/* Publishers */}
-      <section className="container mx-auto px-4">
+      <section className="container mx-auto px-4 order-5">
          <div className="text-center mb-10">
             <h2 className="text-2xl md:text-3xl font-bold text-primary mb-2">أشهر دور النشر</h2>
           </div>

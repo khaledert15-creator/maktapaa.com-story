@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { useGetSearchSuggestions, useListProducts } from "@workspace/api-client-react";
+import { useGetSearchSuggestions, useListProducts, getGetSearchSuggestionsQueryKey, getListProductsQueryKey } from "@workspace/api-client-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -51,12 +51,12 @@ export default function Search() {
 
   const { data: suggestionsData, isLoading: isLoadingSuggestions } = useGetSearchSuggestions(
     { q: debouncedQuery },
-    { query: { enabled: debouncedQuery.length > 1 && isFocused } }
+    { query: { queryKey: getGetSearchSuggestionsQueryKey({ q: debouncedQuery }), enabled: debouncedQuery.length > 1 && isFocused } }
   );
 
   const { data: resultsData, isLoading: isLoadingResults } = useListProducts(
     { q: initialQuery },
-    { query: { enabled: !!initialQuery && !isFocused } }
+    { query: { queryKey: getListProductsQueryKey({ q: initialQuery }), enabled: !!initialQuery && !isFocused } }
   );
 
   return (

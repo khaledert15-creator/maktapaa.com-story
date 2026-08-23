@@ -1,5 +1,5 @@
 import { createContext, useContext, ReactNode, useMemo } from 'react';
-import { useGetCart, Cart } from '@workspace/api-client-react';
+import { useGetCart, getGetCartQueryKey, Cart } from '@workspace/api-client-react';
 
 interface CartContextType {
   cart: Cart | null;
@@ -10,7 +10,7 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const { data: cart, isLoading } = useGetCart({ query: { retry: false } });
+  const { data: cart, isLoading } = useGetCart({ query: { queryKey: getGetCartQueryKey(), retry: false } });
 
   const itemCount = useMemo(() => {
     if (!cart) return 0;

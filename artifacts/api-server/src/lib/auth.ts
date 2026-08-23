@@ -29,8 +29,7 @@ export function requireAdminAuth(req: Request, res: Response, next: NextFunction
 }
 
 export async function getCustomerFromSession(req: Request) {
-  
-  if (!session?.customerId) return null;
+  if (!req.session?.customerId) return null;
   const [customer] = await db
     .select()
     .from(customersTable)
@@ -39,8 +38,7 @@ export async function getCustomerFromSession(req: Request) {
 }
 
 export async function getAdminFromSession(req: Request) {
-  
-  if (!session?.adminId) return null;
+  if (!req.session?.adminId) return null;
   const [user] = await db
     .select()
     .from(usersTable)

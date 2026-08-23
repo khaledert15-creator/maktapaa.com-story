@@ -19,6 +19,8 @@ export default function Catalog() {
   
   const [page, setPage] = useState(1);
   const [stageId, setStageId] = useState<number | undefined>(searchParams.get('stageId') ? Number(searchParams.get('stageId')) : undefined);
+  const [gradeId, setGradeId] = useState<number | undefined>(searchParams.get('gradeId') ? Number(searchParams.get('gradeId')) : undefined);
+  const [subjectId, setSubjectId] = useState<number | undefined>(searchParams.get('subjectId') ? Number(searchParams.get('subjectId')) : undefined);
   const [publisherId, setPublisherId] = useState<number | undefined>(searchParams.get('publisherId') ? Number(searchParams.get('publisherId')) : undefined);
   const [educationType, setEducationType] = useState<string | undefined>(undefined);
   const [sortBy, setSortBy] = useState<any>('newest');
@@ -27,16 +29,22 @@ export default function Catalog() {
     page,
     limit: 24,
     stageId,
+    gradeId,
+    subjectId,
     publisherId,
     educationType,
     sortBy
   });
 
   const { data: stages } = useListStages();
+  const { data: grades } = useListGrades(stageId ? { stageId } : undefined);
+  const { data: subjects } = useListSubjects(gradeId ? { gradeId } : stageId ? { stageId } : undefined);
   const { data: publishers } = useListPublishers();
 
   const resetFilters = () => {
     setStageId(undefined);
+    setGradeId(undefined);
+    setSubjectId(undefined);
     setPublisherId(undefined);
     setEducationType(undefined);
     setPage(1);
@@ -59,9 +67,53 @@ export default function Catalog() {
               <Checkbox 
                 id={`stage-${stage.id}`} 
                 checked={stageId === stage.id}
-                onCheckedChange={(checked) => setStageId(checked ? stage.id : undefined)}
+                onCheckedChange={(checked) => {
+                  setStageId(checked ? stage.id : undefined);
+                  setGradeId(undefined);
+                  setSubjectId(undefined);
+                  setPage(1);
+                }}
               />
               <Label htmlFor={`stage-${stage.id}`} className="cursor-pointer">{stage.nameAr}</Label>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <h4 className="font-semibold text-sm border-b pb-2">الصف الدراسي</h4>
+        <div className="space-y-2">
+          {grades?.map(grade => (
+            <div key={grade.id} className="flex items-center gap-2">
+              <Checkbox
+                id={`grade-${grade.id}`}
+                checked={gradeId === grade.id}
+                onCheckedChange={(checked) => {
+                  setGradeId(checked ? grade.id : undefined);
+                  setSubjectId(undefined);
+                  setPage(1);
+                }}
+              />
+              <Label htmlFor={`grade-${grade.id}`} className="cursor-pointer">{grade.nameAr}</Label>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <h4 className="font-semibold text-sm border-b pb-2">المادة</h4>
+        <div className="space-y-2">
+          {subjects?.map(subject => (
+            <div key={subject.id} className="flex items-center gap-2">
+              <Checkbox
+                id={`subject-${subject.id}`}
+                checked={subjectId === subject.id}
+                onCheckedChange={(checked) => {
+                  setSubjectId(checked ? subject.id : undefined);
+                  setPage(1);
+                }}
+              />
+              <Label htmlFor={`subject-${subject.id}`} className="cursor-pointer">{subject.nameAr}</Label>
             </div>
           ))}
         </div>
