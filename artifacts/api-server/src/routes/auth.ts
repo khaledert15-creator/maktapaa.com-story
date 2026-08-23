@@ -2,9 +2,8 @@ import { Router } from "express";
 import { db, customersTable, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { hashPassword, verifyPassword } from "../lib/auth";
-import type { IRouter } from "express";
 
-const router: IRouter = Router();
+const router = Router();
 
 // Customer register
 router.post("/auth/register", async (req, res): Promise<void> => {

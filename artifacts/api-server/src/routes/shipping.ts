@@ -1,8 +1,8 @@
-import { Router, type IRouter } from "express";
+import { Router } from "express";
 import { db, governoratesTable } from "@workspace/db";
 import { eq, asc } from "drizzle-orm";
 
-const router: IRouter = Router();
+const router = Router();
 
 router.get("/governorates", async (_req, res): Promise<void> => {
   const govs = await db.select().from(governoratesTable)

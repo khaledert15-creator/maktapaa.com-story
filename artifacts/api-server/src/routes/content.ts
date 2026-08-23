@@ -1,8 +1,8 @@
-import { Router, type IRouter } from "express";
+import { Router } from "express";
 import { db, bannersTable, faqsTable, siteSettingsTable, stagesTable, publishersTable, productsTable } from "@workspace/db";
 import { eq, asc, and, desc, isNull } from "drizzle-orm";
 
-const router: IRouter = Router();
+const router = Router();
 
 async function getSettings(): Promise<Record<string, string>> {
   const rows = await db.select().from(siteSettingsTable);

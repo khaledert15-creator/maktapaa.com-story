@@ -1,9 +1,9 @@
-import { Router, type IRouter } from "express";
+import { Router } from "express";
 import { db, customersTable, ordersTable } from "@workspace/db";
 import { eq, ilike, sql } from "drizzle-orm";
 import { requireAdminAuth } from "../../lib/auth";
 
-const router: IRouter = Router();
+const router = Router();
 router.use(requireAdminAuth);
 
 router.get("/admin/customers", async (req, res): Promise<void> => {

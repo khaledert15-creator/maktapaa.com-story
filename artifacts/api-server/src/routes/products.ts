@@ -1,11 +1,11 @@
-import { Router, type IRouter } from "express";
+import { Router } from "express";
 import {
   db, productsTable, stagesTable, gradesTable, subjectsTable, publishersTable,
   reviewsTable, categoriesTable,
 } from "@workspace/db";
 import { eq, and, gte, lte, ilike, or, desc, asc, isNull, sql, inArray } from "drizzle-orm";
 
-const router: IRouter = Router();
+const router = Router();
 
 // List products (public)
 router.get("/products", async (req, res): Promise<void> => {

@@ -1,9 +1,9 @@
-import { Router, type IRouter } from "express";
+import { Router } from "express";
 import { db, productsTable, stagesTable, gradesTable, subjectsTable, publishersTable, stockMovementsTable } from "@workspace/db";
 import { eq, and, ilike, desc, isNull, sql } from "drizzle-orm";
 import { requireAdminAuth } from "../../lib/auth";
 
-const router: IRouter = Router();
+const router = Router();
 router.use(requireAdminAuth);
 
 function mapAdminProduct(p: typeof productsTable.$inferSelect) {
