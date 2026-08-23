@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: maktabaa-books
+    runtime: node
+    region: frankfurt
+    plan: free
+    branch: main
+    autoDeployTrigger: commit
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm run typecheck:libs && PORT=10000 BASE_PATH=/ pnpm --filter @workspace/maktaba build && pnpm --filter @workspace/api-server build
+    preDeployCommand: pnpm --filter @workspace/db push
+    startCommand: pnpm --filter @workspace/api-server start
+    healthCheckPath: /api/healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true

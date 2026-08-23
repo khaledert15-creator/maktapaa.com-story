@@ -1,4 +1,5 @@
 import express, { type Express } from "express";
+import path from "node:path";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import session from "express-session";
@@ -7,6 +8,10 @@ import router from "./routes";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
+
+if (process.env.NODE_ENV === "production") {
+  app.set("trust proxy", 1);
+}
 
 const PgSession = ConnectPgSimple(session);
 
@@ -66,7 +71,7 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: false, // set true when using https
+      secure: process.env.NODE_ENV === "production",
       httpOnly: true,
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
       sameSite: "lax",
@@ -76,5 +81,16 @@ app.use(
 );
 
 app.use("/api", router);
+
+// Serve the customer storefront from the same origin as the API in production.
+// This keeps sessions, search, cart, and checkout working without cross-origin
+// cookie issues on free hosting providers such as Render.
+if (process.env.NODE_ENV === "production") {
+  const storefrontDir = path.resolve(process.cwd(), "artifacts/maktaba/dist/public");
+  app.use(express.static(storefrontDir));
+  app.get("/{*path}", (_req, res) => {
+    res.sendFile(path.join(storefrontDir, "index.html"));
+  });
+}
 
 export default app;
