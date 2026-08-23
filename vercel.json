@@ -1,14 +1,14 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "PORT=3000 BASE_PATH=/ pnpm --filter @workspace/maktaba build",
+  "buildCommand": "node scripts/build-vercel-api.mjs && PORT=3000 BASE_PATH=/ pnpm --filter @workspace/maktaba build",
   "outputDirectory": "artifacts/maktaba/dist/public",
   "functions": {
-    "api/[...path].ts": {
+    "api/[...path].mjs": {
       "maxDuration": 10
     }
   },
   "routes": [
-    { "src": "/api/(.*)", "dest": "/api/[...path].ts" },
+    { "src": "/api/(.*)", "dest": "/api/[...path].mjs" },
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
