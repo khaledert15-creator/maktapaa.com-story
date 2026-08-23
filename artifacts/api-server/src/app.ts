@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express from "express";
 import path from "node:path";
 import cors from "cors";
 import pinoHttp from "pino-http";
@@ -7,7 +7,7 @@ import ConnectPgSimple from "connect-pg-simple";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
-const app: Express = express();
+const app = express();
 
 if (process.env.NODE_ENV === "production") {
   app.set("trust proxy", 1);
