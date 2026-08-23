@@ -27,5 +27,6 @@ pnpm-debug.log*
 # Cache and local files
 .cache/
 .local/
+*.tsbuildinfo
 .DS_Store
 Thumbs.db
