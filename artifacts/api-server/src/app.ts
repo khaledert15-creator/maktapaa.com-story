@@ -1,4 +1,4 @@
-import express, { type Request, type Response } from "express";
+import express from "express";
 import path from "node:path";
 import cors from "cors";
 import pinoHttp from "pino-http";
@@ -88,7 +88,7 @@ app.use("/api", router);
 if (process.env.NODE_ENV === "production") {
   const storefrontDir = path.resolve(process.cwd(), "artifacts/maktaba/dist/public");
   app.use(express.static(storefrontDir));
-  app.get("/{*path}", (_req: Request, res: Response) => {
+  app.get("/{*path}", (_req: unknown, res: any) => {
     res.sendFile(path.join(storefrontDir, "index.html"));
   });
 }
